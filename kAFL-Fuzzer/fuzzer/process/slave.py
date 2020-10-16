@@ -126,6 +126,7 @@ class SlaveProcess:
         while True:
             try:
                 msg = self.conn.recv()
+                print("msg : ", msg)
             except ConnectionResetError:
                 log_slave("Lost connection to master. Shutting down.", self.slave_id)
                 return

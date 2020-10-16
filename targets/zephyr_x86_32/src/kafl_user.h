@@ -25,7 +25,7 @@
 #define HYPERCALL_KAFL_SUBMIT_KASAN			7
 #define HYPERCALL_KAFL_PANIC				8
 #define HYPERCALL_KAFL_KASAN				9
-#define HYPERCALL_KAFL_LOCK					10
+#define HYPERCALL_KAFL_SNAPSHOT				10
 #define HYPERCALL_KAFL_INFO					11
 #define HYPERCALL_KAFL_NEXT_PAYLOAD			12
 #define HYPERCALL_KAFL_PRINTF				13
@@ -122,8 +122,8 @@ static inline void kAFL_hypercall(uint32_t p1, void* p2)
 		case HYPERCALL_KAFL_KASAN:
 			printk("hypercall: KAFL_isKASAN()\n");
 			break;
-		case HYPERCALL_KAFL_LOCK:
-			printk("hypercall: KAFL_LOCK()\n");
+		case HYPERCALL_KAFL_SNAPSHOT:
+			printk("hypercall: KAFL_SNAPSHOT()\n");
 			break;
 		case HYPERCALL_KAFL_INFO:
 			printk("hypercall: KAFL_INFO()\n");

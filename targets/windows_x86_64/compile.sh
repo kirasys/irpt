@@ -4,6 +4,7 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 	mkdir bin/loader/ 2> /dev/null
 	mkdir bin/fuzzer/ 2> /dev/null
 	mkdir bin/info/ 2> /dev/null
+	mkdir bin/medcored/ 2> /dev/null
 
 	if x86_64-w64-mingw32-gcc -v 2> /dev/null && x86_64-w64-mingw32-g++ -v 2> /dev/null; then
 		printf "\tCompiling loader...\n"
@@ -14,6 +15,8 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 		x86_64-w64-mingw32-gcc src/fuzzer/vuln_test.c -I ../ -o bin/fuzzer/vuln_test.exe
         printf "\tCompiling hprintf test...\n"
         x86_64-w64-mingw32-gcc src/fuzzer/hprintf_test.c -I ../ -o bin/fuzzer/hprintf_test.exe -mwindows -Wall
+		printf "\tCompiling medcored test...\n"
+        x86_64-w64-mingw32-gcc src/fuzzer/medcored_test.c -I ../ -o bin/fuzzer/medcored_test.exe -mwindows -Wall
 
 	else
 		printf "\tCould not find x86_64-w64-mingw32-gcc/g++! Skipping..\n\t(Try sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 to fix this)"
