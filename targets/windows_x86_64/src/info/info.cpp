@@ -57,7 +57,6 @@ typedef struct _RTL_PROCESS_MODULES
 } RTL_PROCESS_MODULES, *PRTL_PROCESS_MODULES;
 
 int main( void ){
-
     char* info_buffer = (char*)VirtualAlloc(0, INFO_SIZE, MEM_COMMIT, PAGE_READWRITE);
     memset(info_buffer, 0xff, INFO_SIZE);
     memset(info_buffer, 0x00, INFO_SIZE);

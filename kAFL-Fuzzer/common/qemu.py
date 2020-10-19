@@ -86,7 +86,8 @@ class qemu:
         self.cmd += " -serial file:" + self.qemu_serial_log + \
                     " -enable-kvm" \
                     " -m " + str(config.argument_values['mem']) + \
-                    " -net none" \
+                    " -net nic -cpu host -smp cores=4" + \
+                    " -net user,hostfwd=tcp::2222-:22" + \
                     " -chardev socket,server,nowait,path=" + self.control_filename + \
                     ",id=kafl_interface" \
                     " -device kafl,chardev=kafl_interface,bitmap_size=" + str(self.bitmap_size) + ",shm0=" + self.binary_filename + \
@@ -286,6 +287,9 @@ class qemu:
                 log_qemu("[RECV] " + "unknown cmd '" + res + "'" + str(e), self.qemu_id)
                 raise e
 
+    def recv(self):
+        return self.control.recv(1)     
+
     def __debug_recv(self):
         while True:
             try:
@@ -471,27 +475,18 @@ class qemu:
         return True
 
     def __qemu_handshake(self):
-
         if self.config.argument_values['agent']:
             self.__set_agent()
 
-        #self.__debug_recv_expect(qemu_protocol.RELEASE + qemu_protocol.PT_TRASHED)
-        self.__debug_recv_expect(qemu_protocol.ACQUIRE)
-        self.__debug_send(qemu_protocol.RELEASE)
-        log_qemu("Stage 1 handshake done [INIT]", self.qemu_id)
-        
-        # TODO: notify user if target/VM loads really slow or not at all..
-        #ready = select.select([self.control], [], [], 0.5)
-        #while not ready[0]:
-        #    print("[Slave %d] Waiting for Qemu handshake..." % self.qemu_id)
-        #    ready = select.select([self.control], [], [], 1)
-
-        self.handshake_stage_1 = False
-        self.__debug_recv_expect(qemu_protocol.ACQUIRE)
-        self.__debug_send(qemu_protocol.RELEASE)
-        #self.__debug_recv_expect(qemu_protocol.ACQUIRE + qemu_protocol.PT_TRASHED)
-        log_qemu("Stage 2 handshake done [READY]", self.qemu_id)
-        self.handshake_stage_2 = False
+        self.__debug_send(qemu_protocol.RELEASE) # unlock
+        while True:
+            res = self.__debug_recv()
+            if res == qemu_protocol.LOCK:
+                break
+            else:
+                self.__debug_send(qemu_protocol.RELEASE)
+        self.__debug_recv_expect(qemu_protocol.RELEASE)
+        log_qemu("Handshake done [INIT]", self.qemu_id)
 
     def __qemu_connect(self):
         # Note: setblocking() disables the timeout! settimeout() will automatically set blocking!
@@ -629,7 +624,6 @@ class qemu:
         else:
             self.send_disable_patches()
         self.__debug_send(qemu_protocol.RELEASE)
-
         self.crashed = False
         self.timeout = False
         self.kasan = False

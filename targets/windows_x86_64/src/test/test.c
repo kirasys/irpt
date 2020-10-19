@@ -158,29 +158,13 @@ int main(int argc, char** argv){
 
     panic_handler1 = resolve_KeBugCheck(kernel_func1);
     panic_handler2 = resolve_KeBugCheck(kernel_func2);
-
-    /* allocate 4MB contiguous virtual memory to hold fuzzer program; data is provided by the fuzzer */
-    program_buffer = (void*)VirtualAlloc(0, PROGRAM_SIZE, MEM_COMMIT, PAGE_READWRITE);
-    /* ensure that the virtual memory is *really* present in physical memory... */
-    memset(program_buffer, 0xff, PROGRAM_SIZE);
-
-    /* this hypercall will generate a VM snapshot for the fuzzer and subsequently terminate QEMU */
-    kAFL_hypercall(HYPERCALL_KAFL_SNAPSHOT, 0);
-
-    /***** Fuzzer Entrypoint *****/
-    //kAFL_hypercall(HYPERCALL_KAFL_PRINTF, "Fuzzing start");
+    printf("%llx", panic_handler1);
+    
     kAFL_hypercall(HYPERCALL_KAFL_LOCK, 0);
 
-    /* initial fuzzer handshake */
     kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
     kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
-    /* submit panic address */
     kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, panic_handler1);
-    kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, panic_handler2);
-    /* submit virtual address of program buffer and wait for data (*blocking*) */
-    kAFL_hypercall(HYPERCALL_KAFL_GET_PROGRAM, (UINT64)program_buffer);
-    /* execute fuzzer program */
-    load_program(program_buffer);
     /* bye */ 
     return 0;
 }

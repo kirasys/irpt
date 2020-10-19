@@ -26,6 +26,7 @@ def start(config):
 
     q = qemu(0, config)
     q.start()
+    q.recv()
     q.shutdown()
 
     try:

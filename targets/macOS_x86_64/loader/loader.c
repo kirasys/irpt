@@ -119,7 +119,7 @@ int main(int argc, char** argv)
 #endif
 
 	/* this hypercall will generate a VM snapshot for the fuzzer and subsequently terminate QEMU */
-	kAFL_hypercall(HYPERCALL_KAFL_SNAPSHOT, 0);
+	kAFL_hypercall(HYPERCALL_KAFL_LOCK, 0);
 
 
 	/***** Fuzzer Entrypoint *****/

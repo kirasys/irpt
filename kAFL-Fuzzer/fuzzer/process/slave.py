@@ -258,7 +258,7 @@ class SlaveProcess:
 
         is_new_input = self.bitmap_storage.should_send_to_master(exec_res)
         crash = exec_res.is_crash()
-        stable = False;
+        stable = False
 
         # store crashes and any validated new behavior
         # do not validate timeouts and crashes at this point as they tend to be nondeterministic

@@ -42,7 +42,7 @@
 #define HYPERCALL_KAFL_SUBMIT_KASAN			7
 #define HYPERCALL_KAFL_PANIC				8
 #define HYPERCALL_KAFL_KASAN				9
-#define HYPERCALL_KAFL_SNAPSHOT					10
+#define HYPERCALL_KAFL_SNAPSHOT				10
 #define HYPERCALL_KAFL_INFO					11
 #define HYPERCALL_KAFL_NEXT_PAYLOAD			12
 #define HYPERCALL_KAFL_PRINTF				13
@@ -57,6 +57,8 @@
 #define HYPERCALL_KAFL_USER_ABORT			20
 #define HYPERCALL_KAFL_TIMEOUT				21
 
+/* kirasys */
+#define HYPERCALL_KAFL_LOCK					22
 
 #define PAYLOAD_SIZE						(128 << 10)				/* up to 128KB payloads */
 #define PROGRAM_SIZE						(128 << 20)				/* kAFL supports 128MB programm data */

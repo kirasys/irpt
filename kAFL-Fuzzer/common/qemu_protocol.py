@@ -35,6 +35,9 @@ PT_TRASHED_KASAN = b'N'
 
 ABORT = b'H'
 
+# kirasys
+LOCK = b'l'
+
 CMDS = {
     ACQUIRE: "ACQUIRE",
     RELEASE: "RELEASE",
