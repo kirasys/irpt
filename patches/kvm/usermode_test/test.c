@@ -256,8 +256,8 @@ int trace(void)
 			exit(-1);
 	   	}
 
-	   	filter_iprs.a = 0x1000;
-	   	filter_iprs.b = 0x100a;
+	   	filter_iprs.a = 0xfffff80077110000;
+	   	filter_iprs.b = 0xfffff80077215000;
 		
 		/* Set up ADDR0 IP filtering */
 	    ret = ioctl(vmx_pt_fd, KVM_VMX_PT_CONFIGURE_ADDR0, &filter_iprs);
@@ -270,22 +270,7 @@ int trace(void)
 		if (ret == -1){
 			err(1, "KVM_VMX_PT_ENABLE_ADDR0");
 		}
-			
-		filter_iprs.a = 0x1017;
-	   	filter_iprs.b = 0x200a;
-
-		/* Set up ADDR1 IP filtering */
-		ret = ioctl(vmx_pt_fd, KVM_VMX_PT_CONFIGURE_ADDR1, &filter_iprs);
-		if (ret == -1){
-				err(1, "KVM_VMX_PT_CONFIGURE_ADDR1");
-		}
-
-		/* Enable ADDR1 IP filtering (also enable tracing for 0x1017 - 0x200a) */
-		ret = ioctl(vmx_pt_fd, KVM_VMX_PT_ENABLE_ADDR1, (unsigned long)0);
-		if (ret == -1){
-			err(1, "KVM_VMX_PT_ENABLE_ADDR1");
-		}
-		  
+	
 		/* Configuration is ready ... Let's enable vmx_pt tracing */
 		ret = ioctl(vmx_pt_fd, KVM_VMX_PT_ENABLE, (unsigned long)0);
 		if (ret == -1){

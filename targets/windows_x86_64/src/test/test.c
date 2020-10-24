@@ -160,11 +160,40 @@ int main(int argc, char** argv){
     panic_handler2 = resolve_KeBugCheck(kernel_func2);
     printf("%llx", panic_handler1);
     
-    kAFL_hypercall(HYPERCALL_KAFL_LOCK, 0);
-
-    kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
+    //kAFL_hypercall(HYPERCALL_KAFL_LOCK, 0);
     kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
-    kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, panic_handler1);
+    //kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, panic_handler1);
+    //kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, panic_handler2);
+
+    HANDLE kafl_vuln_handle = INVALID_HANDLE_VALUE;
+    hprintf("[+] Attempting to open vulnerable device file (%s)", "\\\\.\\medcored");
+    kafl_vuln_handle = CreateFile((LPCSTR)"\\\\.\\medcored",
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
+        NULL
+    );
+
+    if (kafl_vuln_handle == INVALID_HANDLE_VALUE) {
+        hprintf("[-] Cannot get device handle: 0x%X", GetLastError());
+        return 0;
+    }
+
+    //kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_CR3, 0);
+    //kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
+    kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
+    DeviceIoControl(kafl_vuln_handle,
+                0xa3350408,
+                "1234",
+                4,
+                NULL,
+                0,
+                NULL,
+                NULL
+            );
+    kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
     /* bye */ 
     return 0;
 }

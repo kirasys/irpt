@@ -86,7 +86,7 @@ class qemu:
         self.cmd += " -serial file:" + self.qemu_serial_log + \
                     " -enable-kvm" \
                     " -m " + str(config.argument_values['mem']) + \
-                    " -net nic -cpu host -smp cores=4" + \
+                    " -net nic -cpu host" + \
                     " -net user,hostfwd=tcp::2222-:22" + \
                     " -chardev socket,server,nowait,path=" + self.control_filename + \
                     ",id=kafl_interface" \
@@ -483,9 +483,9 @@ class qemu:
             res = self.__debug_recv()
             if res == qemu_protocol.LOCK:
                 break
-            else:
-                self.__debug_send(qemu_protocol.RELEASE)
+            self.__debug_send(qemu_protocol.RELEASE)
         self.__debug_recv_expect(qemu_protocol.RELEASE)
+        self.__debug_recv()
         log_qemu("Handshake done [INIT]", self.qemu_id)
 
     def __qemu_connect(self):
@@ -557,7 +557,7 @@ class qemu:
     # TODO: document protocol and meaning/effect of each message
     def check_recv(self, timeout_detection=True):
         if timeout_detection and not self.config.argument_values['forkserver']:
-            ready = select.select([self.control], [], [], 0.25)
+            ready = select.select([self.control], [], [], 1)
             if not ready[0]:
                 return 2
         else:
@@ -624,12 +624,14 @@ class qemu:
         else:
             self.send_disable_patches()
         self.__debug_send(qemu_protocol.RELEASE)
+        
         self.crashed = False
         self.timeout = False
         self.kasan = False
 
         repeat = False
         value = self.check_recv(timeout_detection=timeout_detection)
+
         if value == 0:
             pass # all good
         elif value == 1:
