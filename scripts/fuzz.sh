@@ -10,5 +10,6 @@ python3 kAFL-Fuzzer/kafl_fuzz.py \
 	-ip0 0xfffff80466f40000-0xfffff80467045000 \
 	-d \
 	-v \
-	--purge
+	--purge \
+	-wdm_interface test_interface.json
 

@@ -459,7 +459,7 @@ class qemu:
         self.process = subprocess.Popen(self.cmd,
                 preexec_fn=os.setpgrp,
                 stdin=subprocess.PIPE,
-                #stdout=subprocess.PIPE,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
 
         try:
@@ -609,7 +609,6 @@ class qemu:
         return result
 
     def send_payload(self, apply_patches=True, timeout_detection=True, max_iterations=10):
-
         if (self.debug_mode):
             log_qemu("Send payload..", self.qemu_id)
 
@@ -631,7 +630,6 @@ class qemu:
 
         repeat = False
         value = self.check_recv(timeout_detection=timeout_detection)
-
         if value == 0:
             pass # all good
         elif value == 1:

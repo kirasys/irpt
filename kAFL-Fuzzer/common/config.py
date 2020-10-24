@@ -142,6 +142,8 @@ def add_args_fuzzer(parser):
                         type=int, required=False, default=None)
     parser.add_argument('-abort_exec', metavar='<n>', help="exit after max executions",
                         type=int, required=False, default=None)
+    parser.add_argument('-wdm_interface', metavar='<file>', required=False, action=FullPath,
+                        type=parse_is_file, help='path to IOCTL interface information file.')
 
 # Qemu/Slave-specific launch options
 def add_args_qemu(parser):

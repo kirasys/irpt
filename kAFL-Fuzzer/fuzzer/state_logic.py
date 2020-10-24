@@ -114,7 +114,9 @@ class FuzzingStateLogic:
     def init_stage_info(self, metadata, verbose=False):
         stage = metadata["state"]["name"]
         nid = metadata["id"]
+        queue_id = metadata["info"]["queue_id"]
 
+        self.stage_info["queue_id"] = queue_id
         self.stage_info["stage"] = stage
         self.stage_info["parent"] = nid
         self.stage_info["method"] = "uncategorized"
@@ -314,7 +316,6 @@ class FuzzingStateLogic:
 
 
     def execute(self, payload, label=None, extra_info=None):
-
         self.stage_info_execs += 1
         if label and label != self.stage_info["method"]:
             self.stage_update_label(label)

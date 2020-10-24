@@ -65,6 +65,7 @@ def slave_loader(slave_id):
 
 
 num_funky = 0
+EXEC_LIMIT = 10000
 
 class SlaveProcess:
 
@@ -79,8 +80,11 @@ class SlaveProcess:
 
         self.bitmap_storage = BitmapStorage(self.config, self.config.config_values['BITMAP_SHM_SIZE'], "master")
 
+        self.exec_count = 0
+
     def handle_import(self, msg):
-        meta_data = {"state": {"name": "import"}, "id": 0}
+        meta_data = {"state": {"name": "import"}, "id": 0,  
+            "info": {"queue_id": msg["task"]["queue_id"]}}
         payload = msg["task"]["payload"]
         self.logic.process_node(payload, meta_data)
         self.conn.send_ready()
@@ -116,7 +120,9 @@ class SlaveProcess:
                 log_slave("Provided alternative payload found invalid - bug in stage %s?"
                           % meta_data["state"]["name"],
                           self.slave_id)
-        self.conn.send_node_done(meta_data["id"], results, new_payload)
+        self.conn.send_node_done(meta_data["id"], results, new_payload, self.exec_count > EXEC_LIMIT)
+        if self.exec_count > EXEC_LIMIT:
+            self.exec_count = 0
 
     def loop(self):
         if not self.q.start():
@@ -146,7 +152,6 @@ class SlaveProcess:
 
         new_res = self.__execute(data).apply_lut()
         new_array = new_res.copy_to_array()
-
         if new_array == old_array:
             return True
 
@@ -251,6 +256,7 @@ class SlaveProcess:
 
 
     def execute(self, data, info):
+        self.exec_count += 1
         self.statistics.event_exec()
 
         exec_res = self.__execute(data)
@@ -268,7 +274,6 @@ class SlaveProcess:
                     stable = self.funky_validate(data, exec_res)
                 else:
                     stable = self.quick_validate(data, exec_res)
-
                 if not stable:
                     # TODO: auto-throttle persistent runs based on funky rate?
                     self.statistics.event_funky()

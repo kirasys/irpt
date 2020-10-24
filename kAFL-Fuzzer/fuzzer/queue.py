@@ -136,3 +136,24 @@ class InputQueue:
                     self.statistics.event_node_remove_fav_bit(old_node)
         for node in changed_nodes:
             node.write_metadata()
+
+class CycleQueue:
+    def __init__(self, config):
+        self.config = config
+        self.queue_cycle = []
+        self.queue_index = 0
+    
+    def append(self, value):
+        self.queue_cycle.append(value)
+
+    def next(self):
+        self.queue_index = (self.queue_index + 1) % len(self.queue_cycle)
+    
+    def get_next_node(self):
+        return self.queue_cycle[self.queue_index].get_next()
+    
+    def insert_input(self, *args, **kwargs):
+        self.queue_cycle[self.queue_index].insert_input(*args, **kwargs)
+    
+    def update_node_results(self, *args, **kwargs):
+        self.queue_cycle[self.queue_index].update_node_results(*args, **kwargs)

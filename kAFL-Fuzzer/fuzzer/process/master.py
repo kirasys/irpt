@@ -13,17 +13,20 @@ import glob
 import os
 from   pprint import pformat
 import mmh3
+import json
+import struct
 
 from common.debug import log_master
 from common.util import read_binary_file, print_note
 from common.execution_result import ExecutionResult
 from fuzzer.communicator import ServerConnection, MSG_NODE_DONE, MSG_NEW_INPUT, MSG_READY
-from fuzzer.queue import InputQueue
+from fuzzer.queue import InputQueue, CycleQueue
 from fuzzer.statistics import MasterStatistics
 from fuzzer.technique.redqueen.cmp import redqueen_global_config
 from fuzzer.bitmap import BitmapStorage
 from fuzzer.node import QueueNode
 
+u32 = lambda x : struct.unpack('<I', x)[0]
 
 class MasterProcess:
 
@@ -37,7 +40,16 @@ class MasterProcess:
 
 
         self.statistics = MasterStatistics(self.config)
-        self.queue = InputQueue(self.config, self.statistics)
+        self.queues = CycleQueue(self.config)
+        if self.config.argument_values['wdm_interface'] != None:
+            # Parse interface.json
+            with open(self.config.argument_values['wdm_interface']) as f:
+                interfaces = json.load(f)["interfaces"]
+
+            for interface in interfaces:
+                self.queues.append(InputQueue(self.config, self.statistics))
+
+        #self.queue = InputQueue(self.config, self.statistics)
         self.bitmap_storage = BitmapStorage(config, config.config_values['BITMAP_SHM_SIZE'], "master", read_only=False)
 
         redqueen_global_config(
@@ -46,22 +58,15 @@ class MasterProcess:
                 afl_arith_max=self.config.config_values['ARITHMETIC_MAX']
                 )
 
+        self.imports = glob.glob(self.config.argument_values['work_dir'] + "/imports/*")
+
         log_master("Starting (pid: %d)" % os.getpid())
         log_master("Configuration dump:\n%s" %
                 pformat(config.argument_values, indent=4, compact=True))
 
     def send_next_task(self, conn):
-        # Inputs placed to imports/ folder have priority.
-        # This can also be used to inject additional seeds at runtime.
-        imports = glob.glob(self.config.argument_values['work_dir'] + "/imports/*")
-        if imports:
-            path = imports.pop()
-            print("Importing payload from %s" % path)
-            seed = read_binary_file(path)
-            os.remove(path)
-            return self.comm.send_import(conn, {"type": "import", "payload": seed})
         # Process items from queue..
-        node = self.queue.get_next()
+        node = self.queues.get_next_node()
         if node:
             return self.comm.send_node(conn, {"type": "node", "nid": node.get_id()})
 
@@ -77,13 +82,36 @@ class MasterProcess:
 
 
     def loop(self):
+        # Import a seed.
+        path = False
+        while not path:
+            for conn, msg in self.comm.wait(self.statistics.plot_thres):
+                assert msg["type"] == MSG_READY
+                path = self.imports.pop()
+                print("Importing payload from %s" % path)
+                seed = read_binary_file(path)
+                os.remove(path)
+                self.comm.send_import(conn, {"type": "import", "queue_id": u32(seed[:4]), "payload": seed[4:]})
+        
         while True:
             for conn, msg in self.comm.wait(self.statistics.plot_thres):
                 if msg["type"] == MSG_NODE_DONE:
                     # Slave execution done, update queue item + send new task
                     log_master("Received results, sending next task..")
                     if msg["node_id"]:
-                        self.queue.update_node_results(msg["node_id"], msg["results"], msg["new_payload"])
+                        self.queues.update_node_results(msg["node_id"], msg["results"], msg["new_payload"])
+
+                    if msg["next_queue"]:
+                        self.queues.next()
+
+                        # Inputs placed to imports/ folder have priority.
+                        # Todo - prevent injecting seeds at runtime
+                        if self.imports:
+                            path = self.imports.pop()
+                            print("Importing payload from %s" % path)
+                            seed = read_binary_file(path)
+                            os.remove(path)
+                            self.comm.send_import(conn, {"type": "import", "queue_id": u32(seed[:4]), "payload": seed[4:]})
                     self.send_next_task(conn)
                 elif msg["type"] == MSG_NEW_INPUT:
                     # Slave reports new interesting input
@@ -119,6 +147,7 @@ class MasterProcess:
                 raise SystemExit("Exit on max execs.")
 
     def maybe_insert_node(self, payload, bitmap_array, node_struct):
+        print("New payload(%d) : " % len(payload), payload)
         bitmap = ExecutionResult.bitmap_from_bytearray(bitmap_array, node_struct["info"]["exit_reason"],
                                                        node_struct["info"]["performance"])
         bitmap.lut_applied = True  # since we received the bitmap from the slave, the lut was already applied
@@ -129,7 +158,7 @@ class MasterProcess:
             node = QueueNode(payload, bitmap_array, node_struct, write=False)
             node.set_new_bytes(new_bytes, write=False)
             node.set_new_bits(new_bits, write=False)
-            self.queue.insert_input(node, bitmap)
+            self.queues.insert_input(node, bitmap)
         elif self.debug_mode:
             if node_struct["info"]["exit_reason"] != "regular":
                 log_master("Payload found to be boring, not saved (exit=%s)" % node_struct["info"]["exit_reason"])
