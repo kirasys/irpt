@@ -12,8 +12,9 @@ import mmh3
 import msgpack
 
 from common.config import FuzzerConfiguration
-from common.util import read_binary_file, atomic_write
+from common.util import read_binary_file, atomic_write, p32
 
+IOCODE_SIZE = 4
 
 class QueueNode:
     NextID = 1
@@ -36,7 +37,7 @@ class QueueNode:
 
     @staticmethod
     def get_payload(exitreason, id):
-        return read_binary_file(QueueNode.__get_payload_filename(exitreason, id))
+        return read_binary_file(QueueNode.__get_payload_filename(exitreason, id))[IOCODE_SIZE:]
 
     def __get_bitmap_filename(self):
         workdir = FuzzerConfiguration().argument_values['work_dir']
@@ -95,6 +96,8 @@ class QueueNode:
 
     def set_payload(self, payload, write=True):
         self.set_payload_len(len(payload), write=False)
+        # IoControlCode
+        payload = p32(self.node_struct["info"]["queue_id"]) + payload
         atomic_write(QueueNode.__get_payload_filename(self.get_exit_reason(), self.get_id()), payload)
 
     def get_payload_len(self):

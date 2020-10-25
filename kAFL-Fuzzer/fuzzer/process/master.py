@@ -101,11 +101,11 @@ class MasterProcess:
                     if msg["node_id"]:
                         self.queues.update_node_results(msg["node_id"], msg["results"], msg["new_payload"])
 
+                    # Check if current iocode is done.
                     if msg["next_queue"]:
                         self.queues.next()
 
                         # Inputs placed to imports/ folder have priority.
-                        # Todo - prevent injecting seeds at runtime
                         if self.imports:
                             path = self.imports.pop()
                             print("Importing payload from %s" % path)

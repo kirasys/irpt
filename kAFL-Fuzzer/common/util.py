@@ -9,6 +9,7 @@ import shutil
 import sys
 import tempfile
 import string
+import struct
 from shutil import copyfile
 
 from common import color
@@ -143,3 +144,5 @@ def is_int(value):
 
 def json_dumper(obj):
     return obj.__dict__
+
+p32 = lambda x : struct.pack('<I', x)
