@@ -19,7 +19,7 @@ import struct
 from common.debug import log_master
 from common.util import read_binary_file, print_note
 from common.execution_result import ExecutionResult
-from fuzzer.communicator import ServerConnection, MSG_NODE_DONE, MSG_NEW_INPUT, MSG_READY
+from fuzzer.communicator import ServerConnection, MSG_NODE_DONE, MSG_NEW_INPUT, MSG_READY, MSG_NEXT_QUEUE, HANG_TIMEOUT
 from fuzzer.queue import InputQueue, CycleQueue
 from fuzzer.statistics import MasterStatistics
 from fuzzer.technique.redqueen.cmp import redqueen_global_config
@@ -34,6 +34,8 @@ class MasterProcess:
         self.config = config
         self.comm = ServerConnection(self.config)
         self.debug_mode = config.argument_values['debug']
+        self.task_count = 0
+        self.task_paused = False
 
         self.busy_events = 0
         self.empty_hash = mmh3.hash(("\x00" * self.config.config_values['BITMAP_SHM_SIZE']), signed=False)
@@ -65,9 +67,14 @@ class MasterProcess:
                 pformat(config.argument_values, indent=4, compact=True))
 
     def send_next_task(self, conn):
+        # for the switching queue.
+        if self.task_paused:
+            return
+
         # Process items from queue..
         node = self.queues.get_next_node()
         if node:
+            self.task_count += 1
             return self.comm.send_node(conn, {"type": "node", "nid": node.get_id()})
 
         # No work in queue. Tell slave to wait a little or attempt blind fuzzing.
@@ -79,7 +86,48 @@ class MasterProcess:
             main_bitmap = self.bitmap_storage.get_bitmap_for_node_type("regular").c_bitmap
             if mmh3.hash(main_bitmap) == self.empty_hash:
                 print_note("Coverage bitmap is empty?! Check -ip0 or try better seeds.")
+    
+    def handle_msg(self, conn, msg):
+        if msg["type"] == MSG_NODE_DONE:
+            # Slave execution done, update queue item + send new task
+            self.task_count -= 1
+            log_master("Received results, sending next task..")
+            if msg["node_id"]:
+                self.queues.update_node_results(msg["node_id"], msg["results"], msg["new_payload"])
+            self.send_next_task(conn)
+        elif msg["type"] == MSG_NEW_INPUT:
+            # Slave reports new interesting input
+            if self.debug_mode:
+                log_master("Received new input (exit=%s): %s" % (
+                    msg["input"]["info"]["exit_reason"],
+                    repr(msg["input"]["payload"][:24])))
+            node_struct = {"info": msg["input"]["info"], "state": {"name": "initial"}}
+            self.maybe_insert_node(msg["input"]["payload"], msg["input"]["bitmap"], node_struct)
+        elif msg["type"] == MSG_READY:
+            # Initial slave hello, send first task...
+            # log_master("Slave is ready..")
+            self.send_next_task(conn)
+        elif msg["type"] == MSG_NEXT_QUEUE:
+            self.task_paused = True
+            # Flush slave message to switch queue.
+            while self.task_count:
+                for conn, msg in self.comm.wait(self.statistics.plot_thres):
+                    self.handle_msg(conn, msg)
+            self.task_paused = False
 
+            # Switch to next queue.
+            self.queues.next()
+
+            # Inputs placed to imports/ folder have priority.
+            if self.imports:
+                path = self.imports.pop()
+                print("Importing payload from %s" % path)
+                seed = read_binary_file(path)
+                os.remove(path)
+                self.comm.send_import(conn, {"type": "import", "IoControlCode": u32(seed[:4]), "payload": seed[4:]})
+            self.send_next_task(conn)
+        else:
+            raise ValueError("unknown message type {}".format(msg))
 
     def loop(self):
         # Import a seed.
@@ -92,41 +140,10 @@ class MasterProcess:
                 seed = read_binary_file(path)
                 os.remove(path)
                 self.comm.send_import(conn, {"type": "import", "IoControlCode": u32(seed[:4]), "payload": seed[4:]})
-        
+
         while True:
             for conn, msg in self.comm.wait(self.statistics.plot_thres):
-                if msg["type"] == MSG_NODE_DONE:
-                    # Slave execution done, update queue item + send new task
-                    log_master("Received results, sending next task..")
-                    if msg["node_id"]:
-                        self.queues.update_node_results(msg["node_id"], msg["results"], msg["new_payload"])
-
-                    # Check if current iocode is done.
-                    if msg["next_queue"]:
-                        self.queues.next()
-
-                        # Inputs placed to imports/ folder have priority.
-                        if self.imports:
-                            path = self.imports.pop()
-                            print("Importing payload from %s" % path)
-                            seed = read_binary_file(path)
-                            os.remove(path)
-                            self.comm.send_import(conn, {"type": "import", "IoControlCode": u32(seed[:4]), "payload": seed[4:]})
-                    self.send_next_task(conn)
-                elif msg["type"] == MSG_NEW_INPUT:
-                    # Slave reports new interesting input
-                    if self.debug_mode:
-                        log_master("Received new input (exit=%s): %s" % (
-                            msg["input"]["info"]["exit_reason"],
-                            repr(msg["input"]["payload"][:24])))
-                    node_struct = {"info": msg["input"]["info"], "state": {"name": "initial"}}
-                    self.maybe_insert_node(msg["input"]["payload"], msg["input"]["bitmap"], node_struct)
-                elif msg["type"] == MSG_READY:
-                    # Initial slave hello, send first task...
-                    # log_master("Slave is ready..")
-                    self.send_next_task(conn)
-                else:
-                    raise ValueError("unknown message type {}".format(msg))
+                self.handle_msg(conn, msg)
             self.statistics.event_slave_poll()
             self.statistics.maybe_write_stats()
             self.check_abort_condition()

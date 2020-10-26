@@ -18,7 +18,9 @@ MSG_RUN_NODE = 2
 MSG_NODE_DONE = 3
 MSG_NEW_INPUT = 4
 MSG_BUSY = 5
+MSG_NEXT_QUEUE = 6
 
+HANG_TIMEOUT = 1
 
 class ServerConnection:
 
@@ -81,6 +83,11 @@ class ClientConnection:
         self.sock.send_bytes(
             msgpack.packb({"type": MSG_NEW_INPUT, "input": {"payload": data, "bitmap": bitmap, "info": info}}, use_bin_type=True))
 
-    def send_node_done(self, node_id, results, new_payload, next_queue=False):
+    def send_node_done(self, node_id, results, new_payload):
         self.sock.send_bytes(msgpack.packb(
-            {"type": MSG_NODE_DONE, "node_id": node_id, "results": results, "new_payload": new_payload, "next_queue": next_queue}, use_bin_type=True))
+            {"type": MSG_NODE_DONE, "node_id": node_id, "results": results, "new_payload": new_payload}, use_bin_type=True))
+        
+    def send_next_queue(self):
+        self.sock.send_bytes(msgpack.packb({"type": MSG_NEXT_QUEUE, "client_id": self.id}, use_bin_type=True))
+
+

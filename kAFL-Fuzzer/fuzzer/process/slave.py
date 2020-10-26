@@ -124,24 +124,11 @@ class SlaveProcess:
 
         if self.exec_count > EXEC_LIMIT: # Fuzzing next queue
             self.exec_count = 0
+            self.conn.send_next_queue()
 
-            # To avoid race condition, flush message queue.
-            while True:
-                ready = select.select([self.conn.sock], [], [], 0.1)
-                if not ready[0]:
-                    break
-                self.handle_msg()
-            self.conn.send_node_done(meta_data["id"], results, new_payload, next_queue=True)
-        else:
-            self.conn.send_node_done(meta_data["id"], results, new_payload)
+        self.conn.send_node_done(meta_data["id"], results, new_payload)
 
-    def handle_msg(self):
-        try:
-            msg = self.conn.recv()
-        except ConnectionResetError:
-            log_slave("Lost connection to master. Shutting down.", self.slave_id)
-            return False
-
+    def handle_msg(self, msg):
         if msg["type"] == MSG_RUN_NODE:
             self.handle_node(msg)
         elif msg["type"] == MSG_IMPORT:
@@ -157,8 +144,14 @@ class SlaveProcess:
             return
 
         log_slave("Started qemu", self.slave_id)
-        while self.handle_msg():
-            pass
+        while True:
+            try:
+                msg = self.conn.recv()
+            except ConnectionResetError:
+                log_slave("Lost connection to master. Shutting down.", self.slave_id)
+                return False
+            
+            self.handle_msg(msg)
 
     def quick_validate(self, data, old_res, quiet=False):
         # Validate in persistent mode. Faster but problematic for very funky targets
@@ -252,7 +245,6 @@ class SlaveProcess:
         return exec_res
 
     def __execute(self, data, retry=0):
-
         try:
             self.q.set_payload(data)
             return self.q.send_payload()

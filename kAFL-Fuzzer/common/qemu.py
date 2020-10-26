@@ -26,7 +26,7 @@ from common.debug import log_qemu
 from common.execution_result import ExecutionResult
 from fuzzer.technique.redqueen.workdir import RedqueenWorkdir
 from common.util import read_binary_file, atomic_write, print_fail, print_warning, strdump
-
+from fuzzer.communicator import HANG_TIMEOUT
 
 def to_string_32(value):
     return [(value >> 24) & 0xff,
@@ -557,7 +557,7 @@ class qemu:
     # TODO: document protocol and meaning/effect of each message
     def check_recv(self, timeout_detection=True):
         if timeout_detection and not self.config.argument_values['forkserver']:
-            ready = select.select([self.control], [], [], 1)
+            ready = select.select([self.control], [], [], HANG_TIMEOUT)
             if not ready[0]:
                 return 2
         else:
