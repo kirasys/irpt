@@ -114,9 +114,9 @@ class FuzzingStateLogic:
     def init_stage_info(self, metadata, verbose=False):
         stage = metadata["state"]["name"]
         nid = metadata["id"]
-        queue_id = metadata["info"]["queue_id"]
+        queue_id = metadata["info"]["IoControlCode"]
 
-        self.stage_info["queue_id"] = queue_id
+        self.stage_info["IoControlCode"] = queue_id
         self.stage_info["stage"] = stage
         self.stage_info["parent"] = nid
         self.stage_info["method"] = "uncategorized"

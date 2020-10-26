@@ -97,7 +97,7 @@ class QueueNode:
     def set_payload(self, payload, write=True):
         self.set_payload_len(len(payload), write=False)
         # IoControlCode
-        payload = p32(self.node_struct["info"]["queue_id"]) + payload
+        payload = p32(self.node_struct["info"]["IoControlCode"]) + payload
         atomic_write(QueueNode.__get_payload_filename(self.get_exit_reason(), self.get_id()), payload)
 
     def get_payload_len(self):

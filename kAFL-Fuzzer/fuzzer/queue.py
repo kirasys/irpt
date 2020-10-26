@@ -103,6 +103,7 @@ class InputQueue:
         node.clear_fav_bits(write=False)
         node.set_fav_factor(self.scheduler.score_speed(node), write=True)
 
+        print("nodeid :", node.get_id())
         self.id_to_node[node.get_id()] = node
         self.update_best_input_for_bitmap_entry(node, bitmap)  # TODO improve performance!
         self.maybe_pushback_to_cycle(node)

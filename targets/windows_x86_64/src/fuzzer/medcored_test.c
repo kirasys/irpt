@@ -67,9 +67,9 @@ int main(int argc, char** argv){
             /* kernel fuzzing */
             hprintf("[+] Injecting data...");
             DeviceIoControl(kafl_vuln_handle,
-                0xa3350408,
-                (LPVOID)(payload_buffer->data),
-                (DWORD)payload_buffer->size,
+                *(DWORD*)(payload_buffer->data),
+                (LPVOID)(payload_buffer->data + 4),
+                (DWORD)payload_buffer->size - 4,
                 NULL,
                 0,
                 NULL,

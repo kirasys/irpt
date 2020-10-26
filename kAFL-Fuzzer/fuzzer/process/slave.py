@@ -16,13 +16,14 @@ import time
 import signal
 import sys
 import shutil
+import select
 
 import lz4.frame as lz4
 
 from common.config import FuzzerConfiguration
 from common.debug import log_slave
 from common.qemu import qemu
-from common.util import read_binary_file, atomic_write, print_warning, print_fail
+from common.util import read_binary_file, atomic_write, print_warning, print_fail, p32
 from fuzzer.bitmap import BitmapStorage, GlobalBitmap
 from fuzzer.communicator import ClientConnection, MSG_IMPORT, MSG_RUN_NODE, MSG_BUSY
 from fuzzer.node import QueueNode
@@ -84,7 +85,7 @@ class SlaveProcess:
 
     def handle_import(self, msg):
         meta_data = {"state": {"name": "import"}, "id": 0,  
-            "info": {"queue_id": msg["task"]["queue_id"]}}
+            "info": {"IoControlCode": msg["task"]["IoControlCode"]}}
         payload = msg["task"]["payload"]
         self.logic.process_node(payload, meta_data)
         self.conn.send_ready()
@@ -120,30 +121,44 @@ class SlaveProcess:
                 log_slave("Provided alternative payload found invalid - bug in stage %s?"
                           % meta_data["state"]["name"],
                           self.slave_id)
-        self.conn.send_node_done(meta_data["id"], results, new_payload, self.exec_count > EXEC_LIMIT)
-        if self.exec_count > EXEC_LIMIT:
+
+        if self.exec_count > EXEC_LIMIT: # Fuzzing next queue
             self.exec_count = 0
+
+            # To avoid race condition, flush message queue.
+            while True:
+                ready = select.select([self.conn.sock], [], [], 0.1)
+                if not ready[0]:
+                    break
+                self.handle_msg()
+            self.conn.send_node_done(meta_data["id"], results, new_payload, next_queue=True)
+        else:
+            self.conn.send_node_done(meta_data["id"], results, new_payload)
+
+    def handle_msg(self):
+        try:
+            msg = self.conn.recv()
+        except ConnectionResetError:
+            log_slave("Lost connection to master. Shutting down.", self.slave_id)
+            return False
+
+        if msg["type"] == MSG_RUN_NODE:
+            self.handle_node(msg)
+        elif msg["type"] == MSG_IMPORT:
+            self.handle_import(msg)
+        elif msg["type"] == MSG_BUSY:
+            self.handle_busy()
+        else:
+            raise ValueError("Unknown message type {}".format(msg))
+        return True
 
     def loop(self):
         if not self.q.start():
             return
 
         log_slave("Started qemu", self.slave_id)
-        while True:
-            try:
-                msg = self.conn.recv()
-            except ConnectionResetError:
-                log_slave("Lost connection to master. Shutting down.", self.slave_id)
-                return
-
-            if msg["type"] == MSG_RUN_NODE:
-                self.handle_node(msg)
-            elif msg["type"] == MSG_IMPORT:
-                self.handle_import(msg)
-            elif msg["type"] == MSG_BUSY:
-                self.handle_busy()
-            else:
-                raise ValueError("Unknown message type {}".format(msg))
+        while self.handle_msg():
+            pass
 
     def quick_validate(self, data, old_res, quiet=False):
         # Validate in persistent mode. Faster but problematic for very funky targets
@@ -258,8 +273,8 @@ class SlaveProcess:
     def execute(self, data, info):
         self.exec_count += 1
         self.statistics.event_exec()
-
-        exec_res = self.__execute(data)
+        payload = p32(info["IoControlCode"]) + data
+        exec_res = self.__execute(payload)
 
         is_new_input = self.bitmap_storage.should_send_to_master(exec_res)
         crash = exec_res.is_crash()
@@ -270,10 +285,10 @@ class SlaveProcess:
         if is_new_input:
             if not crash:
                 assert exec_res.is_lut_applied()
-                if self.config.argument_values["funky"]:
-                    stable = self.funky_validate(data, exec_res)
+                if self.config.argument_values["funky"]: # TODO - Needed new determine algorihtm 
+                    stable = self.funky_validate(payload, exec_res)
                 else:
-                    stable = self.quick_validate(data, exec_res)
+                    stable = self.quick_validate(payload, exec_res)
                 if not stable:
                     # TODO: auto-throttle persistent runs based on funky rate?
                     self.statistics.event_funky()

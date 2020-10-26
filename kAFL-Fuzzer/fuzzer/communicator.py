@@ -81,6 +81,6 @@ class ClientConnection:
         self.sock.send_bytes(
             msgpack.packb({"type": MSG_NEW_INPUT, "input": {"payload": data, "bitmap": bitmap, "info": info}}, use_bin_type=True))
 
-    def send_node_done(self, node_id, results, new_payload, next_queue):
+    def send_node_done(self, node_id, results, new_payload, next_queue=False):
         self.sock.send_bytes(msgpack.packb(
             {"type": MSG_NODE_DONE, "node_id": node_id, "results": results, "new_payload": new_payload, "next_queue": next_queue}, use_bin_type=True))

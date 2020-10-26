@@ -91,7 +91,7 @@ class MasterProcess:
                 print("Importing payload from %s" % path)
                 seed = read_binary_file(path)
                 os.remove(path)
-                self.comm.send_import(conn, {"type": "import", "queue_id": u32(seed[:4]), "payload": seed[4:]})
+                self.comm.send_import(conn, {"type": "import", "IoControlCode": u32(seed[:4]), "payload": seed[4:]})
         
         while True:
             for conn, msg in self.comm.wait(self.statistics.plot_thres):
@@ -111,7 +111,7 @@ class MasterProcess:
                             print("Importing payload from %s" % path)
                             seed = read_binary_file(path)
                             os.remove(path)
-                            self.comm.send_import(conn, {"type": "import", "queue_id": u32(seed[:4]), "payload": seed[4:]})
+                            self.comm.send_import(conn, {"type": "import", "IoControlCode": u32(seed[:4]), "payload": seed[4:]})
                     self.send_next_task(conn)
                 elif msg["type"] == MSG_NEW_INPUT:
                     # Slave reports new interesting input
