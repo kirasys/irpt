@@ -277,10 +277,13 @@ class SlaveProcess:
         if is_new_input:
             if not crash:
                 assert exec_res.is_lut_applied()
-                if self.config.argument_values["funky"]: # TODO - Needed new determine algorihtm 
-                    stable = self.funky_validate(payload, exec_res)
+                if info["method"] == "import": # import don't need to check
+                    stable = True
                 else:
-                    stable = self.quick_validate(payload, exec_res)
+                    if self.config.argument_values["funky"]: # TODO - Needed new determine algorihtm 
+                        stable = self.funky_validate(payload, exec_res)
+                    else:
+                        stable = self.quick_validate(payload, exec_res)
                 if not stable:
                     # TODO: auto-throttle persistent runs based on funky rate?
                     self.statistics.event_funky()
