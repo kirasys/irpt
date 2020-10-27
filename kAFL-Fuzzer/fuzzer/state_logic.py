@@ -18,6 +18,7 @@ import fuzzer.technique.havoc as havoc
 import fuzzer.technique.radamsa as radamsa
 import fuzzer.technique.interesting_values as interesting_values
 from common.debug import log_slave, log_grimoire, log_redq
+from common.wdm import interface_manager
 from fuzzer.node import QueueNode
 from fuzzer.technique.grimoire_inference import GrimoireInference
 from fuzzer.technique.redqueen.colorize import ColorizerStrategy
@@ -114,9 +115,9 @@ class FuzzingStateLogic:
     def init_stage_info(self, metadata, verbose=False):
         stage = metadata["state"]["name"]
         nid = metadata["id"]
-        queue_id = metadata["info"]["IoControlCode"]
+        iocode = metadata["info"]["IoControlCode"]
 
-        self.stage_info["IoControlCode"] = queue_id
+        self.stage_info["IoControlCode"] = iocode
         self.stage_info["stage"] = stage
         self.stage_info["parent"] = nid
         self.stage_info["method"] = "uncategorized"
@@ -316,6 +317,9 @@ class FuzzingStateLogic:
 
 
     def execute(self, payload, label=None, extra_info=None):
+        if not interface_manager.satisfiable(self.stage_info["IoControlCode"], len(payload)):
+            return None, None
+
         self.stage_info_execs += 1
         if label and label != self.stage_info["method"]:
             self.stage_update_label(label)

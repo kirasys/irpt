@@ -112,7 +112,7 @@ class SlaveProcess:
 
         results, new_payload = self.logic.process_node(payload, meta_data)
         if new_payload:
-            default_info = {"method": "validate_bits", "parent": meta_data["id"]}
+            default_info = {"method": "validate_bits", "parent": meta_data["id"], "IoControlCode": meta_data["info"]["IoControlCode"]}
             if self.validate_bits(new_payload, meta_data, default_info):
                 log_slave("Stage %s found alternative payload for node %d"
                           % (meta_data["state"]["name"], meta_data["id"]),

@@ -1,4 +1,0 @@
-{
-    "interfaces": [{"IoControlCode":2738160648, "InputBufferSize": 4},
-    {"IoControlCode": 2738160656, "InputBufferSize": 5}]
-}

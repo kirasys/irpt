@@ -21,6 +21,7 @@ import sys
 from common.debug import enable_logging
 from common.self_check import post_self_check
 from common.util import prepare_working_dir, print_fail, print_note, print_warning, copy_seed_files
+from common.wdm import interface_manager
 from fuzzer.process.master import MasterProcess
 from fuzzer.process.slave import slave_loader
 
@@ -71,6 +72,9 @@ def start(config):
     # Without -ip0, Qemu will not active PT tracing and we turn into a blind fuzzer
     if not config.argument_values['ip0']:
         print_warning("No trace region configured! PT feedback disabled!")
+
+    if config.argument_values['wdm']:
+        interface_manager.load(config.argument_values['wdm'])
 
     master = MasterProcess(config)
 

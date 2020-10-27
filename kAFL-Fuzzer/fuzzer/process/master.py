@@ -19,6 +19,7 @@ import struct
 from common.debug import log_master
 from common.util import read_binary_file, print_note
 from common.execution_result import ExecutionResult
+from common.wdm import interface_manager
 from fuzzer.communicator import ServerConnection, MSG_NODE_DONE, MSG_NEW_INPUT, MSG_READY, MSG_NEXT_QUEUE, HANG_TIMEOUT
 from fuzzer.queue import InputQueue, CycleQueue
 from fuzzer.statistics import MasterStatistics
@@ -43,13 +44,8 @@ class MasterProcess:
 
         self.statistics = MasterStatistics(self.config)
         self.queues = CycleQueue(self.config)
-        if self.config.argument_values['wdm_interface'] != None:
-            # Parse interface.json
-            with open(self.config.argument_values['wdm_interface']) as f:
-                interfaces = json.load(f)["interfaces"]
-
-            for interface in interfaces:
-                self.queues.append(InputQueue(self.config, self.statistics))
+        for _ in range(interface_manager.size()):
+            self.queues.append(InputQueue(self.config, self.statistics))
 
         #self.queue = InputQueue(self.config, self.statistics)
         self.bitmap_storage = BitmapStorage(config, config.config_values['BITMAP_SHM_SIZE'], "master", read_only=False)
@@ -60,8 +56,7 @@ class MasterProcess:
                 afl_arith_max=self.config.config_values['ARITHMETIC_MAX']
                 )
 
-        self.imports = glob.glob(self.config.argument_values['work_dir'] + "/imports/*")
-
+        self.imports = list(interface_manager.to_corpus())
         log_master("Starting (pid: %d)" % os.getpid())
         log_master("Configuration dump:\n%s" %
                 pformat(config.argument_values, indent=4, compact=True))
@@ -87,6 +82,11 @@ class MasterProcess:
             if mmh3.hash(main_bitmap) == self.empty_hash:
                 print_note("Coverage bitmap is empty?! Check -ip0 or try better seeds.")
     
+    def send_import(self, conn):
+        (iocode, payload) = self.imports.pop()
+        print("Importing payload from %s" % hex(iocode))
+        self.comm.send_import(conn, {"type": "import", "IoControlCode": iocode, "payload": payload})
+
     def handle_msg(self, conn, msg):
         if msg["type"] == MSG_NODE_DONE:
             # Slave execution done, update queue item + send new task
@@ -108,8 +108,8 @@ class MasterProcess:
             # log_master("Slave is ready..")
             self.send_next_task(conn)
         elif msg["type"] == MSG_NEXT_QUEUE:
-            self.task_paused = True
             # Flush slave message to switch queue.
+            self.task_paused = True
             while self.task_count:
                 for conn, msg in self.comm.wait(self.statistics.plot_thres):
                     self.handle_msg(conn, msg)
@@ -120,26 +120,20 @@ class MasterProcess:
 
             # Inputs placed to imports/ folder have priority.
             if self.imports:
-                path = self.imports.pop()
-                print("Importing payload from %s" % path)
-                seed = read_binary_file(path)
-                os.remove(path)
-                self.comm.send_import(conn, {"type": "import", "IoControlCode": u32(seed[:4]), "payload": seed[4:]})
+                self.send_import(conn)
             self.send_next_task(conn)
         else:
             raise ValueError("unknown message type {}".format(msg))
 
     def loop(self):
         # Import a seed.
-        path = False
-        while not path:
+        imported = True
+        while imported:
             for conn, msg in self.comm.wait(self.statistics.plot_thres):
                 assert msg["type"] == MSG_READY
-                path = self.imports.pop()
-                print("Importing payload from %s" % path)
-                seed = read_binary_file(path)
-                os.remove(path)
-                self.comm.send_import(conn, {"type": "import", "IoControlCode": u32(seed[:4]), "payload": seed[4:]})
+                if self.imports:
+                    self.send_import(conn)
+                    imported = False
 
         while True:
             for conn, msg in self.comm.wait(self.statistics.plot_thres):
@@ -164,7 +158,7 @@ class MasterProcess:
                 raise SystemExit("Exit on max execs.")
 
     def maybe_insert_node(self, payload, bitmap_array, node_struct):
-        print("New payload(%d) : " % len(payload), payload)
+        print("New payload(0x%x) : " % node_struct["info"]["IoControlCode"], payload[:16])
         bitmap = ExecutionResult.bitmap_from_bytearray(bitmap_array, node_struct["info"]["exit_reason"],
                                                        node_struct["info"]["performance"])
         bitmap.lut_applied = True  # since we received the bitmap from the slave, the lut was already applied

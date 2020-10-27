@@ -11,5 +11,5 @@ python3 kAFL-Fuzzer/kafl_fuzz.py \
 	-d \
 	-v \
 	--purge \
-	-wdm_interface test_interface.json
+	-wdm medcore_interface.json
 
