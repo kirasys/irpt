@@ -16,10 +16,11 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
         printf "\tCompiling hprintf test...\n"
         x86_64-w64-mingw32-gcc src/fuzzer/hprintf_test.c -I ../ -o bin/fuzzer/hprintf_test.exe -mwindows -Wall
 		printf "\tCompiling medcored test...\n"
-        x86_64-w64-mingw32-gcc src/fuzzer/medcored_test.c -I ../ -o bin/fuzzer/medcored_test.exe -mwindows -Wall
+        x86_64-w64-mingw32-gcc src/fuzzer/medcored_test.c -I ../ -o bin/fuzzer/medcored_test.exe -mwindows -lpsapi -lntdll -Wall 
 		printf "\tCompiling test-suite...\n"
         x86_64-w64-mingw32-gcc src/test/test.c -I ../ -o bin/test/test.exe -lntdll -lpsapi
-
+		printf "\tCompiling ip0-test...\n"
+        x86_64-w64-mingw32-gcc src/fuzzer/ip0_test.c -I ../ -o bin/test/ip0-test.exe -lntdll -lpsapi
 	else
 		printf "\tCould not find x86_64-w64-mingw32-gcc/g++! Skipping..\n\t(Try sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 to fix this)"
 	fi 

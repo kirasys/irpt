@@ -59,6 +59,7 @@
 
 /* kirasys */
 #define HYPERCALL_KAFL_LOCK					22
+#define HYPERCALL_KAFL_IP_FILTER			23
 
 #define PAYLOAD_SIZE						(128 << 10)				/* up to 128KB payloads */
 #define PROGRAM_SIZE						(128 << 20)				/* kAFL supports 128MB programm data */
@@ -68,11 +69,14 @@
 
 #define HPRINTF_MAX_SIZE					0x1000					/* up to 4KB hprintf strings */
 
+/* agent action */
+#define RUN_NODE 			0
+#define RELOAD_DRIVER		1
 
 typedef struct{
 	int32_t size;
 	uint8_t data[PAYLOAD_SIZE-sizeof(int32_t)-sizeof(uint8_t)];
-	uint8_t redqueen_mode;
+	uint8_t action;
 } kAFL_payload;
 
 typedef struct{
@@ -112,8 +116,23 @@ static void kAFL_hypercall(uint64_t rbx, uint64_t rcx){
 				 "movq %2, %%rax;"
 				 "vmcall" 
 				: 
-				: "r" (rcx), "r" (rbx), "r" (rax) 
+				: "r" (rcx), "r" (rbx), "r" (rax)
 				: "rax", "rcx", "rbx"
+				);
+# endif
+}
+
+static void kAFL_hypercallEx(uint64_t rbx, uint64_t rcx, uint64_t rdx){
+# ifndef __NOKAFL
+	uint64_t rax = HYPERCALL_KAFL_RAX_ID;
+    asm volatile("movq %0, %%rdx;"
+				 "movq %1, %%rcx;"
+				 "movq %2, %%rbx;"  
+				 "movq %3, %%rax;"
+				 "vmcall" 
+				: 
+				: "r" (rdx), "r" (rcx), "r" (rbx), "r" (rax) 
+				: "rax", "rcx", "rbx", "rdx"
 				);
 # endif
 }

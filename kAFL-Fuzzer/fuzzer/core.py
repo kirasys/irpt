@@ -68,11 +68,7 @@ def start(config):
     if seed_dir and not copy_seed_files(work_dir, seed_dir):
         print_fail("Error when importing seeds. Exit.")
         return 1
-
-    # Without -ip0, Qemu will not active PT tracing and we turn into a blind fuzzer
-    if not config.argument_values['ip0']:
-        print_warning("No trace region configured! PT feedback disabled!")
-
+        
     if config.argument_values['wdm']:
         interface_manager.load(config.argument_values['wdm'])
 

@@ -85,7 +85,7 @@ def perform_trim(payload, old_node, send_handler):
 
                 new_res, _ = send_handler(payload[0:new_size - pow2_values[i]], label="trim")
 
-                if new_res.is_crash():
+                if new_res and new_res.is_crash():
                     return payload[0:new_size]
 
                 if check_trim_still_valid(old_node, old_res, new_res):

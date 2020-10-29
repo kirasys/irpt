@@ -459,7 +459,7 @@ class qemu:
         self.process = subprocess.Popen(self.cmd,
                 preexec_fn=os.setpgrp,
                 stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
+                #stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
 
         try:
