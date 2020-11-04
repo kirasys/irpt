@@ -9,18 +9,8 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 	if x86_64-w64-mingw32-gcc -v 2> /dev/null && x86_64-w64-mingw32-g++ -v 2> /dev/null; then
 		printf "\tCompiling loader...\n"
 		x86_64-w64-mingw32-g++ src/info/info.cpp -I ../ -o bin/info/info.exe -lntdll -lpsapi
-		printf "\tCompiling info executable...\n"
-		x86_64-w64-mingw32-gcc src/loader/loader.c -I ../ -o bin/loader/loader.exe -Wall -lpsapi
-		printf "\tCompiling vuln_driver fuzzer...\n"
-		x86_64-w64-mingw32-gcc src/fuzzer/vuln_test.c -I ../ -o bin/fuzzer/vuln_test.exe
-        printf "\tCompiling hprintf test...\n"
-        x86_64-w64-mingw32-gcc src/fuzzer/hprintf_test.c -I ../ -o bin/fuzzer/hprintf_test.exe -mwindows -Wall
 		printf "\tCompiling medcored test...\n"
         x86_64-w64-mingw32-gcc src/fuzzer/medcored_test.c -I ../ -o bin/fuzzer/medcored_test.exe -mwindows -lpsapi -lntdll -Wall 
-		printf "\tCompiling test-suite...\n"
-        x86_64-w64-mingw32-gcc src/test/test.c -I ../ -o bin/test/test.exe -lntdll -lpsapi
-		printf "\tCompiling ip0-test...\n"
-        x86_64-w64-mingw32-gcc src/fuzzer/ip0_test.c -I ../ -o bin/test/ip0-test.exe -lntdll -lpsapi
 	else
 		printf "\tCould not find x86_64-w64-mingw32-gcc/g++! Skipping..\n\t(Try sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 to fix this)"
 	fi 

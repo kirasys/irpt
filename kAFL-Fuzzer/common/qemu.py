@@ -25,8 +25,8 @@ import common.qemu_protocol as qemu_protocol
 from common.debug import log_qemu
 from common.execution_result import ExecutionResult
 from fuzzer.technique.redqueen.workdir import RedqueenWorkdir
-from common.util import read_binary_file, atomic_write, print_fail, print_warning, strdump
-from fuzzer.communicator import HANG_TIMEOUT
+from common.util import read_binary_file, atomic_write, print_fail, print_warning, strdump, p32
+from common.wdm import IRP
 
 def to_string_32(value):
     return [(value >> 24) & 0xff,
@@ -557,7 +557,7 @@ class qemu:
     # TODO: document protocol and meaning/effect of each message
     def check_recv(self, timeout_detection=True):
         if timeout_detection and not self.config.argument_values['forkserver']:
-            ready = select.select([self.control], [], [], HANG_TIMEOUT)
+            ready = select.select([self.control], [], [], 3)
             if not ready[0]:
                 return 2
         else:
@@ -630,6 +630,7 @@ class qemu:
 
         repeat = False
         value = self.check_recv(timeout_detection=timeout_detection)
+        #print(value)
         if value == 0:
             pass # all good
         elif value == 1:
@@ -732,26 +733,41 @@ class qemu:
             return False
         return True
 
-    def set_payload(self, payload):
+    def set_payload(self, irp):
         if self.exiting:
             sys.exit(0)
 
         # actual payload is limited to payload_size - sizeof(uint32) - sizeof(uint8)
-        if len(payload) > self.payload_size-5:
-            payload = payload[:self.payload_size-5]
         try:
             self.fs_shm.seek(0)
-            input_len = to_string_32(len(payload))
-            self.fs_shm.write_byte(input_len[3])
-            self.fs_shm.write_byte(input_len[2])
-            self.fs_shm.write_byte(input_len[1])
-            self.fs_shm.write_byte(input_len[0])
-            self.fs_shm.write(payload)
+            self.fs_shm.write(p32(irp.IoControlCode))
+            self.fs_shm.write(p32(irp.InputBufferLength))
+            self.fs_shm.write(p32(irp.OutputBufferLength))
+            self.fs_shm.write(bytes(irp.InputBuffer))
             self.fs_shm.flush()
         except ValueError:
             if self.exiting:
                 sys.exit(0)
             # Qemu crashed. Could be due to prior payload but more likely harness/config is broken..
             #print_fail("Failed to set new payload - Qemu crash?");
-            log_qemu("Failed to set new payload - Qemu crash?", self.qemu_id);
+            log_qemu("Failed to set new payload - Qemu crash?", self.qemu_id)
             raise
+
+    def send_irp(self, irp, retry=0):
+        try:
+            self.set_payload(irp)
+            return self.send_payload()
+        except (ValueError, BrokenPipeError):
+            if retry > 2:
+                # TODO if it reliably kills qemu, perhaps log to master for harvesting..
+                print_fail("Process aborting due to repeated SHM/socket error. Check logs.")
+                log_qemu("Aborting due to repeated SHM/socket error", self.qemu_id)
+                raise
+            print_warning("SHM/socket error on Process (retry %d)" % retry)
+            log_qemu("SHM/socket error, trying to restart qemu...", self.qemu_id)
+            if not self.restart():
+                raise
+        return self.send_irp(irp, retry=retry+1)
+    
+    def reload_driver(self):
+        self.send_irp(IRP(0, 0, 0))

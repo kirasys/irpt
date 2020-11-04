@@ -63,7 +63,7 @@ typedef struct _RTL_PROCESS_MODULES
 int create_service() {
 	SC_HANDLE scmHandle = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
 	if (!scmHandle) {
-		puts("[create_service] OpenSCManager error!");
+		hprintf("[create_service] OpenSCManager error!");
 		return 0;
 	}
 
@@ -77,19 +77,19 @@ int create_service() {
 }
 
 int load_driver() {
-	SC_HANDLE scmHandle = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
+	SC_HANDLE scmHandle = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
 	if (!scmHandle) {
-		puts("[load_driver] OpenSCManager error!");
+		hprintf("[load_driver] OpenSCManager error!");
 		return 0;
 	}
 
 	SC_HANDLE schService = OpenServiceA(
 		scmHandle,       // SCM database 
 		SVCNAME,          // name of service 
-		SERVICE_START);
+		SERVICE_ALL_ACCESS);
 	if (!schService) {
 		CloseServiceHandle(scmHandle);
-		puts("[load_driver] OpenServiceA error!");
+		hprintf("[load_driver] OpenServiceA error!");
 		return 0;
 	}
 
@@ -97,13 +97,13 @@ int load_driver() {
 	SERVICE_STATUS status = {};
 	if (StartService(schService, 0, NULL)) {
 		while (QueryServiceStatus(schService, &status)) {
-			if (status.dwCurrentState != SERVICE_START_PENDING)
+			if (status.dwCurrentState == SERVICE_RUNNING)
 				break;
 			Sleep(500);
 		}
 	}
 	else
-		puts("[load_driver] StartService error!");
+		hprintf("[load_driver] StartService error!");
 
 	CloseServiceHandle(schService);
 	CloseServiceHandle(scmHandle);
@@ -112,33 +112,33 @@ int load_driver() {
 
 
 int unload_driver() {
-	SC_HANDLE scmHandle = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
+	SC_HANDLE scmHandle = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
 	if (!scmHandle) {
-		puts("[unload_driver] OpenSCManager error!");
+		hprintf("[unload_driver] OpenSCManager error!");
 		return 0;
 	}
 
 	SC_HANDLE schService = OpenServiceA(
 		scmHandle,       // SCM database 
 		SVCNAME,          // name of service 
-		SERVICE_STOP);
+		SERVICE_ALL_ACCESS);
 	if (!schService) {
 		CloseServiceHandle(scmHandle);
-		puts("[unload_driver] OpenServiceA error!");
+		hprintf("[unload_driver] OpenServiceA error!");
 		return 0;
 	}
-
+	
 	SERVICE_STATUS status = {};
 	if (ControlService(schService, SERVICE_CONTROL_STOP, &status)) {
 		while (QueryServiceStatus(schService, &status)) {
-			if (status.dwCurrentState != SERVICE_START_PENDING)
+			if (status.dwCurrentState == SERVICE_STOPPED)
 				break;
 			Sleep(500);
 		}
 	}
 	else
-		puts("[unload_driver] ControlService error!");
-	
+		hprintf("[unload_driver] ControlService error!");
+
 	CloseServiceHandle(schService);
 	CloseServiceHandle(scmHandle);
 	return 1;
@@ -152,8 +152,6 @@ void set_ip0_filter() {
 
 	if (EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded) && cbNeeded < sizeof(drivers))
 	{
-		TCHAR szDriver[ARRAY_SIZE];
-
 		cDrivers = cbNeeded / sizeof(drivers[0]);
 		PRTL_PROCESS_MODULES ModuleInfo;
 
@@ -192,57 +190,64 @@ int main(int argc, char** argv){
     hprintf("[+] Memset kAFL_payload at address %lx (size %d)", (uint64_t) payload_buffer, PAYLOAD_SIZE);
     memset(payload_buffer, 0xff, PAYLOAD_SIZE);
 
-    /* open vulnerable driver */
-    create_service();
-    load_driver();
-
-    HANDLE kafl_vuln_handle = INVALID_HANDLE_VALUE;
-    hprintf("[+] Attempting to open vulnerable device file (%s)", "\\\\.\\toy");
-    kafl_vuln_handle = CreateFile((LPCSTR)"\\\\.\\toy",
-        GENERIC_READ | GENERIC_WRITE,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
-        NULL
-    );
-
-    if (kafl_vuln_handle == INVALID_HANDLE_VALUE) {
-        hprintf("[-] Cannot get device handle: 0x%X", GetLastError());
-        return 0;
-    }
-
-    /* submit the guest virtual address of the payload buffer */
+	/* submit the guest virtual address of the payload buffer */
     hprintf("[+] Submitting buffer address to hypervisor...");
     kAFL_hypercall(HYPERCALL_KAFL_GET_PAYLOAD, (UINT64)payload_buffer);
 
     /* this hypercall submits the current CR3 value */ 
     hprintf("[+] Submitting current CR3 value to hypervisor...");
     kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_CR3, 0);
-    
-    /* set ip0 filter */
-    set_ip0_filter();
-    while(1){
-            kAFL_hypercall(HYPERCALL_KAFL_NEXT_PAYLOAD, 0);
-            /* request new payload (*blocking*) */
-            kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
-            
-            /* kernel fuzzing */
-            hprintf("[+] Injecting data...");
-            DeviceIoControl(kafl_vuln_handle,
-                *(DWORD*)(payload_buffer->data),
-                (LPVOID)(payload_buffer->data + 4),
-                (DWORD)payload_buffer->size - 4,
-                NULL,
-                0,
-                NULL,
-                NULL
-            );
 
-            /* inform fuzzer about finished fuzzing iteration */
-            hprintf("[+] Injection finished...");
-            kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
-    }
+    /* open vulnerable driver */
+    create_service();
+	
+	while(1) {
+		load_driver();
+		HANDLE kafl_vuln_handle = INVALID_HANDLE_VALUE;
+		hprintf("[+] Attempting to open vulnerable device file (%s)", "\\\\.\\toy");
+		kafl_vuln_handle = CreateFile((LPCSTR)"\\\\.\\toy",
+			GENERIC_READ | GENERIC_WRITE,
+			FILE_SHARE_READ | FILE_SHARE_WRITE,
+			NULL,
+			OPEN_EXISTING,
+			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
+			NULL
+		);
+
+		if (kafl_vuln_handle == INVALID_HANDLE_VALUE) {
+			hprintf("[-] Cannot get device handle: 0x%X", GetLastError());
+			return 0;
+		}
+		
+		/* set ip0 filter */
+		set_ip0_filter();
+		while(1){
+				kAFL_hypercall(HYPERCALL_KAFL_NEXT_PAYLOAD, 0);
+				if (payload_buffer->IoControlCode == 0)
+					continue;
+				/* request new payload (*blocking*) */
+				kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
+				
+				/* kernel fuzzing */
+				//hprintf("[+] %x %x %x %s", payload_buffer->IoControlCode, payload_buffer->InputBufferLength, payload_buffer->OutputBufferLength, payload_buffer->InputBuffer);
+				DeviceIoControl(kafl_vuln_handle,
+					payload_buffer->IoControlCode,
+					&payload_buffer->InputBuffer,
+					payload_buffer->InputBufferLength,
+					NULL,
+					0,
+					NULL,
+					NULL
+				);
+
+				/* inform fuzzer about finished fuzzing iteration */
+				//hprintf("[+] Injection finished...");
+				kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
+		}
+		hprintf("[+] Unload driver.");
+		CloseHandle(kafl_vuln_handle);
+		unload_driver();
+	}
     return 0;
 }
 

@@ -21,10 +21,7 @@ import sys
 from common.debug import enable_logging
 from common.self_check import post_self_check
 from common.util import prepare_working_dir, print_fail, print_note, print_warning, copy_seed_files
-from common.wdm import interface_manager
-from fuzzer.process.master import MasterProcess
-from fuzzer.process.slave import slave_loader
-
+from fuzzer.process.process import Process
 
 def qemu_sweep():
     pids = pgrep.pgrep("qemu")
@@ -68,25 +65,14 @@ def start(config):
     if seed_dir and not copy_seed_files(work_dir, seed_dir):
         print_fail("Error when importing seeds. Exit.")
         return 1
-        
-    if config.argument_values['wdm']:
-        interface_manager.load(config.argument_values['wdm'])
 
-    master = MasterProcess(config)
-
-    slaves = []
-    for i in range(num_slaves):
-        slaves.append(multiprocessing.Process(name="Slave " + str(i), target=slave_loader, args=(i,)))
-        slaves[i].start()
-
+    process = Process(config) # Todo: multprocess?
     try:
-        master.loop()
+        process.loop()
     except KeyboardInterrupt:
-        print_note("Received Ctrl-C, killing slaves...")
-    except SystemExit as e:
-        print_fail("Master exit: " + str(e))
+        print_note("Received Ctrl-C")
     finally:
-        graceful_exit(slaves)
+        process.shutdown()
 
     time.sleep(0.2)
     qemu_sweep()

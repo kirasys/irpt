@@ -145,4 +145,17 @@ def is_int(value):
 def json_dumper(obj):
     return obj.__dict__
 
+def array2int(array):
+    v = 0
+    for i in range(len(array)):
+        v |= array[i] << (i*8)
+    return v
+
+def int2array(v, size):
+    array = []
+    for _ in range(size):
+        array.append(v & 0xff)
+        v >>= 8
+    return array
+
 p32 = lambda x : struct.pack('<I', x)

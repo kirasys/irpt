@@ -36,8 +36,8 @@ def enable_logging(workdir):
     debug_file_path = workdir + "/debug.log"
 
 
-def log_master(msg):
-    logger("[MASTR]\t" + msg)
+def log_process(msg):
+    logger("[PROCESS]\t" + msg)
 
 
 def log_mapserver(msg):

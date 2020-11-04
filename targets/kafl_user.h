@@ -17,19 +17,7 @@
 #include <sys/mman.h>
 #endif
 
-#ifdef __MINGW64__
-#ifndef uint64_t
-#define uint64_t UINT64
-#endif
-#ifndef int32_t
-#define int32_t INT32
-#endif
-#ifndef uint8_t
-#define uint8_t UINT8
-#endif
-#else 
 #include <stdint.h>
-#endif
 
 #define HYPERCALL_KAFL_RAX_ID				0x01f
 #define HYPERCALL_KAFL_ACQUIRE				0
@@ -74,9 +62,10 @@
 #define RELOAD_DRIVER		1
 
 typedef struct{
-	int32_t size;
-	uint8_t data[PAYLOAD_SIZE-sizeof(int32_t)-sizeof(uint8_t)];
-	uint8_t action;
+	uint32_t IoControlCode;
+	uint32_t InputBufferLength;
+	uint32_t OutputBufferLength;
+	uint8_t InputBuffer[PAYLOAD_SIZE];
 } kAFL_payload;
 
 typedef struct{
