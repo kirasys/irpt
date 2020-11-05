@@ -40,16 +40,16 @@ class Process:
         self.programDB = ProgramDatabase(config.argument_values['wdm']) # load interface
         #self.progs = ProgQueue(self.config, self.statistics)
 
-    def maybe_insert_program(self, program, exec_res, init_bitmap=False):
+    def maybe_insert_program(self, program, exec_res):
         bitmap_array = exec_res.copy_to_array()
         bitmap = ExecutionResult.bitmap_from_bytearray(bitmap_array, exec_res.exit_reason,
                                                        exec_res.performance)
         bitmap.lut_applied = True  # since we received the bitmap from the should_send_to_master, the lut was already applied
         should_store, new_bytes, new_bits = self.bitmap_storage.should_store_in_queue(bitmap)
-        if should_store and not init_bitmap:
+        if should_store and not exec_res.is_crash():
             self.programOptimizer.add(program, bitmap, new_bytes, new_bits)
 
-    def execute(self, program, init_bitmap=False):
+    def execute(self, program):
         score = 1
         irps = program.irps
         for i in range(len(irps)):
@@ -57,10 +57,9 @@ class Process:
             is_new_input = self.bitmap_storage.should_send_to_master(exec_res)
             crash = exec_res.is_crash()
 
-            if is_new_input and not crash:
+            if is_new_input:
                 new_program = program.clone_with_interface(irps[:i+1])
-                new_program.dump()
-                self.maybe_insert_program(new_program, exec_res, init_bitmap)
+                self.maybe_insert_program(new_program, exec_res)
                 score += 100
             else:
                 log_process("Crashing input found (%s), but not new (discarding)" % (exec_res.exit_reason))
@@ -68,6 +67,7 @@ class Process:
             # restart Qemu on crash
             if crash:
                 #self.statistics.event_reload()
+                print("[+] Crash found!")
                 self.q.reload()
         
         return score
@@ -77,7 +77,8 @@ class Process:
             return
 
         program = self.programDB.getInput()
-        self.execute(program, init_bitmap=True)
+        self.execute(program)
+        self.programOptimizer.clear()   # Default code coverage.
             
         while True:
             program = self.programDB.getInput()
@@ -88,9 +89,8 @@ class Process:
                 hp -= self.execute(program)
                 
                 if self.programOptimizer.optimizable():
-                    print("[+] Reproduction Machine started.")
+                    log_process("[+] New interesting program found. (Start optimizer)")
                     self.programDB.add(list(self.programOptimizer.optimize()))
-                    print("[+] Reproduction Machine end.")
                 else:
                     self.q.revert_driver()
                 

@@ -4,6 +4,7 @@ import time
 import random
 
 from common import rand
+from common.debug import log_process
 from common.util import array2int, int2array
 
 def to_range(rg):
@@ -30,7 +31,7 @@ class IRPProgram:
         self.interface = interface
 
     def clone_with_interface(self, irps=[]):
-        return IRPProgram(self.interface, irps)
+        return IRPProgram(self.interface, copy.deepcopy(irps))
 
     def __satisfiable(self, irp, length):
         inbuffer_ranges = self.interface[irp.IoControlCode]["InputBufferRange"]
@@ -87,7 +88,7 @@ class IRPProgram:
         
         p0 = random.choice(corpus_programs)
         idx = rand.Intn(len(self.irps))
-        self.irps = (self.irps[:idx] + p0.irps)[:IRPProgram.MAX_IRP_COUNT]
+        self.irps = self.irps[:idx] + copy.deepcopy(p0.irps[:IRPProgram.MAX_IRP_COUNT - idx])
         return True
 
     def __insertIRP(self, corpus_programs):
@@ -102,7 +103,7 @@ class IRPProgram:
             irp = self.__generateIRP(random.choice(list(self.interface.keys())))
         else:               # fetch a irp from other programs
             program = random.choice(corpus_programs)
-            irp = random.choice(program.irps)
+            irp = copy.deepcopy(random.choice(program.irps))
 
         # TODO: biasd random??
         self.irps.insert(rand.Intn(len(self.irps)), irp)
@@ -232,11 +233,17 @@ class ProgramOptimizer:
         self.q = q
         self.exec_results = []
     
+    def clear(self):
+        self.exec_results = []
+
     def add(self, program, exec_res, new_bytes, new_bits):
         self.exec_results.append([program, exec_res, new_bytes, new_bits])
     
-    def __execute(self, program):
-        self.q.reload_driver()
+    def __execute(self, program, reload=False):
+        if reload:
+            self.q.reload_driver()
+        else:
+            self.q.revert_driver()
 
         exec_res = None
         for irp in program.irps:
@@ -249,19 +256,41 @@ class ProgramOptimizer:
 
     def optimize(self):
         while len(self.exec_results):
+            repro_program, old_res, new_bytes, new_bits = self.exec_results.pop()
+
             # quick validation for funky case.
-            program, old_res, new_bytes, new_bits = self.exec_results.pop()
             old_array = old_res.copy_to_array()
-            new_res = self.__execute(program)
+            new_res = self.__execute(repro_program, reload=True)
             new_array = new_res.copy_to_array()
             if new_array != old_array:
-                print("[-] Reprodunction fail (funky case)")
+                log_process("[-] Reprodunction fail (funky case)")
                 continue
                 
             # program optimation
-            
-            
-            yield program
+            if len(repro_program.irps) == 1:
+                return repro_program
+
+            valid_irps = []
+            for i in range(len(repro_program.irps)):
+                test_program = repro_program.clone_with_interface(repro_program.irps[:i] + repro_program.irps[i+1:])
+                exec_res = self.__execute(test_program, reload=False)
+
+                valid = False
+                for index in new_bytes.keys():
+                    if exec_res.cbuffer[index] != new_bytes[index]:
+                        valid = True
+                        break
+                if not valid:
+                    for index in new_bits.keys():
+                        if exec_res.cbuffer[index] != new_bits[index]:
+                            valid = True
+                            break
+                if valid:
+                    valid_irps.append(repro_program.irps[i])
+
+            if valid_irps:
+                yield repro_program.clone_with_interface(valid_irps)
+
 
 class ProgramDatabase:
     def __init__(self, path):
