@@ -24,7 +24,6 @@ import common.color
 import common.qemu_protocol as qemu_protocol
 from common.debug import log_qemu
 from common.execution_result import ExecutionResult
-from fuzzer.technique.redqueen.workdir import RedqueenWorkdir
 from common.util import read_binary_file, atomic_write, print_fail, print_warning, strdump, p32
 from common.wdm import IRP
 
@@ -72,9 +71,6 @@ class qemu:
         self.qemu_trace_log = self.config.argument_values['work_dir'] + "/qemu_trace_%s.log" % self.qemu_id
         self.qemu_serial_log = self.config.argument_values['work_dir'] + "/qemu_serial_%s.log" % self.qemu_id
 
-        self.redqueen_workdir = RedqueenWorkdir(self.qemu_id, config)
-        self.redqueen_workdir.init_dir()
-
         self.exiting = False
         self.tick_timeout_treshold = self.config.config_values["TIMEOUT_TICK_FACTOR"]
 
@@ -92,8 +88,7 @@ class qemu:
                     ",id=kafl_interface" \
                     " -device kafl,chardev=kafl_interface,bitmap_size=" + str(self.bitmap_size) + ",shm0=" + self.binary_filename + \
                     ",shm1=" + self.payload_filename + \
-                    ",bitmap=" + self.bitmap_filename + \
-                    ",redqueen_workdir=" + self.redqueen_workdir.base_path
+                    ",bitmap=" + self.bitmap_filename
 
         if False:  # do not emit tracefiles on every execution
             self.cmd += ",dump_pt_trace"
@@ -186,14 +181,6 @@ class qemu:
                     print('\033[0;33m' + data + '\033[0m')
         except Exception as e:
             print("__debug_hprintf: " + str(e))
-
-    def send_enable_redqueen(self):
-        self.__debug_send(qemu_protocol.ENABLE_RQI_MODE)
-        self.__debug_recv_expect(qemu_protocol.ENABLE_RQI_MODE)
-
-    def send_disable_redqueen(self):
-        self.__debug_send(qemu_protocol.DISABLE_RQI_MODE)
-        self.__debug_recv_expect(qemu_protocol.DISABLE_RQI_MODE)
 
     def send_enable_patches(self):
         if not self.patches_enabled:
@@ -566,6 +553,7 @@ class qemu:
                 return 2
 
         result = self.__debug_recv()
+        #print(result)
 
         if result == qemu_protocol.CRASH:
             return 1
@@ -618,10 +606,7 @@ class qemu:
         self.persistent_runs += 1
         start_time = time.time()
         # TODO: added in redqueen - verify what this is doing
-        if apply_patches:
-            self.send_enable_patches()
-        else:
-            self.send_disable_patches()
+        self.send_disable_patches()
         self.__debug_send(qemu_protocol.RELEASE)
         
         self.crashed = False
@@ -706,33 +691,6 @@ class qemu:
 
         return exec_res
 
-    def execute_in_redqueen_mode(self, payload):
-        log_qemu("Performing redqueen iteration...", self.qemu_id)
-        try:
-            self.soft_reload()
-            self.send_rq_set_light_instrumentation()
-            self.send_enable_redqueen()
-            self.set_payload(payload)
-            self.send_payload(timeout_detection=False)
-            if self.exit_reason() != "regular":
-                print_warning("RQ execution returned %s", self.exit_reason())
-        except Exception as e:
-            log_qemu("%s" % traceback.format_exc(), self.qemu_id)
-            return False
-
-        #log_qemu("Disabling redqueen mode...", self.qemu_id)
-        try:
-            self.send_disable_redqueen()
-            self.set_payload(payload)
-            self.send_payload(timeout_detection=False)
-            self.soft_reload()
-            if self.exit_reason() != "regular":
-                print_warning("RQ execution returned %s", self.exit_reason())
-        except Exception as e:
-            log_qemu("%s" % traceback.format_exc(), self.qemu_id)
-            return False
-        return True
-
     def set_payload(self, irp):
         if self.exiting:
             sys.exit(0)
@@ -755,6 +713,8 @@ class qemu:
 
     def send_irp(self, irp, retry=0):
         try:
+            if irp.IoControlCode == 0x222003 and irp.InputBuffer[0] == ord('C'):
+                print('CCCC')
             self.set_payload(irp)
             return self.send_payload()
         except (ValueError, BrokenPipeError):
@@ -769,5 +729,9 @@ class qemu:
                 raise
         return self.send_irp(irp, retry=retry+1)
     
-    def reload_driver(self):
+    def revert_driver(self):
         self.send_irp(IRP(0, 0, 0))
+    
+    def reload_driver(self):
+        self.send_irp(IRP(1, 0, 0))
+    

@@ -23,13 +23,21 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include "kafl_user.h"
 
+
 LPCSTR SVCNAME = "toy";
 LPCSTR DRIVERNAME = "toy_driver.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\toy_driver.sys";
-
+LPCSTR DRIVER_SVCPATH = "\\\\.\\toy";
+/*
+LPCSTR SVCNAME = "medcored";
+LPCSTR DRIVERNAME = "medcored.sys";
+LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\medcored.sys";
+LPCSTR DRIVER_SVCPATH = "\\\\.\\medcored";
+*/
 #include <psapi.h>
 #include <winternl.h>
 #define ARRAY_SIZE 1024
+#define MAX_INST_COUNT 5
 
 PCSTR ntoskrnl = "C:\\Windows\\System32\\ntoskrnl.exe";
 PCSTR kernel_func = "PsCreateSystemThread";
@@ -96,11 +104,7 @@ int load_driver() {
 	// Start the service
 	SERVICE_STATUS status = {};
 	if (StartService(schService, 0, NULL)) {
-		while (QueryServiceStatus(schService, &status)) {
-			if (status.dwCurrentState == SERVICE_RUNNING)
-				break;
-			Sleep(500);
-		}
+
 	}
 	else
 		hprintf("[load_driver] StartService error!");
@@ -130,11 +134,8 @@ int unload_driver() {
 	
 	SERVICE_STATUS status = {};
 	if (ControlService(schService, SERVICE_CONTROL_STOP, &status)) {
-		while (QueryServiceStatus(schService, &status)) {
-			if (status.dwCurrentState == SERVICE_STOPPED)
-				break;
-			Sleep(500);
-		}
+		
+		
 	}
 	else
 		hprintf("[unload_driver] ControlService error!");
@@ -144,38 +145,61 @@ int unload_driver() {
 	return 1;
 }
 
-void set_ip0_filter() {
-	LPVOID drivers[ARRAY_SIZE];
-	DWORD cbNeeded;
-	int cDrivers, i;
-	NTSTATUS status;
+HANDLE open_driver() {
+	HANDLE kafl_vuln_handle = INVALID_HANDLE_VALUE;
+	hprintf("[+] Attempting to open vulnerable device file (%s)", DRIVER_SVCPATH);
+	kafl_vuln_handle = CreateFile(DRIVER_SVCPATH,
+		GENERIC_READ | GENERIC_WRITE,
+		FILE_SHARE_READ | FILE_SHARE_WRITE,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
+		NULL
+	);
 
-	if (EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded) && cbNeeded < sizeof(drivers))
-	{
-		cDrivers = cbNeeded / sizeof(drivers[0]);
-		PRTL_PROCESS_MODULES ModuleInfo;
-
-		ModuleInfo = (PRTL_PROCESS_MODULES)VirtualAlloc(NULL, 1024 * 1024, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-
-		if (!ModuleInfo) {
-			goto fail;
-		}
-
-		if (!NT_SUCCESS(status = NtQuerySystemInformation((SYSTEM_INFORMATION_CLASS)11, ModuleInfo, 1024 * 1024, NULL))) {
-			VirtualFree(ModuleInfo, 0, MEM_RELEASE);
-			goto fail;
-		}
-
-		for (i = 0; i < cDrivers; i++) {
-			PCHAR driver_filename = (PCHAR)ModuleInfo->Modules[i].FullPathName + ModuleInfo->Modules[i].OffsetToFileName;
-			if (!strcmp(driver_filename, DRIVERNAME)) {
-                hprintf("[+] Set ip0 filter.");
-				kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, drivers[i], ((UINT64)drivers[i]) + ModuleInfo->Modules[i].ImageSize);
-				break;
-			}
-		}
-		VirtualFree(ModuleInfo, 0, MEM_RELEASE);
+	if (kafl_vuln_handle == INVALID_HANDLE_VALUE) {
+		hprintf("[-] Cannot get device handle: 0x%X", GetLastError());
+		return 0;
 	}
+	return kafl_vuln_handle;
+}
+
+void set_ip0_filter(int reloaded) {
+	if (reloaded) {
+		LPVOID drivers[ARRAY_SIZE];
+		DWORD cbNeeded;
+		int cDrivers, i;
+		NTSTATUS status;
+
+		if (EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded) && cbNeeded < sizeof(drivers))
+		{
+			cDrivers = cbNeeded / sizeof(drivers[0]);
+			PRTL_PROCESS_MODULES ModuleInfo;
+
+			ModuleInfo = (PRTL_PROCESS_MODULES)VirtualAlloc(NULL, 1024 * 1024, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+			if (!ModuleInfo) {
+				goto fail;
+			}
+
+			if (!NT_SUCCESS(status = NtQuerySystemInformation((SYSTEM_INFORMATION_CLASS)11, ModuleInfo, 1024 * 1024, NULL))) {
+				VirtualFree(ModuleInfo, 0, MEM_RELEASE);
+				goto fail;
+			}
+
+			for (i = 0; i < cDrivers; i++) {
+				PCHAR driver_filename = (PCHAR)ModuleInfo->Modules[i].FullPathName + ModuleInfo->Modules[i].OffsetToFileName;
+				if (!strcmp(driver_filename, DRIVERNAME)) {
+					hprintf("[+] Set ip0 filter.");
+					kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, drivers[i], ((UINT64)drivers[i]) + ModuleInfo->Modules[i].ImageSize);
+					break;
+				}
+			}
+			VirtualFree(ModuleInfo, 0, MEM_RELEASE);
+		}
+	}
+	else
+		kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, 0, 0);
 
 fail:
 	return;
@@ -198,38 +222,22 @@ int main(int argc, char** argv){
     hprintf("[+] Submitting current CR3 value to hypervisor...");
     kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_CR3, 0);
 
-    /* open vulnerable driver */
+    /* init driver and filter */
     create_service();
+	load_driver();
+	HANDLE kafl_vuln_handle = open_driver();
+	set_ip0_filter(1);
 	
 	while(1) {
-		load_driver();
-		HANDLE kafl_vuln_handle = INVALID_HANDLE_VALUE;
-		hprintf("[+] Attempting to open vulnerable device file (%s)", "\\\\.\\toy");
-		kafl_vuln_handle = CreateFile((LPCSTR)"\\\\.\\toy",
-			GENERIC_READ | GENERIC_WRITE,
-			FILE_SHARE_READ | FILE_SHARE_WRITE,
-			NULL,
-			OPEN_EXISTING,
-			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
-			NULL
-		);
-
-		if (kafl_vuln_handle == INVALID_HANDLE_VALUE) {
-			hprintf("[-] Cannot get device handle: 0x%X", GetLastError());
-			return 0;
-		}
-		
 		/* set ip0 filter */
-		set_ip0_filter();
 		while(1){
 				kAFL_hypercall(HYPERCALL_KAFL_NEXT_PAYLOAD, 0);
-				if (payload_buffer->IoControlCode == 0)
-					continue;
+				if (payload_buffer->IoControlCode <= MAX_INST_COUNT)
+					break;
 				/* request new payload (*blocking*) */
 				kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
 				
 				/* kernel fuzzing */
-				//hprintf("[+] %x %x %x %s", payload_buffer->IoControlCode, payload_buffer->InputBufferLength, payload_buffer->OutputBufferLength, payload_buffer->InputBuffer);
 				DeviceIoControl(kafl_vuln_handle,
 					payload_buffer->IoControlCode,
 					&payload_buffer->InputBuffer,
@@ -244,9 +252,17 @@ int main(int argc, char** argv){
 				//hprintf("[+] Injection finished...");
 				kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
 		}
-		hprintf("[+] Unload driver.");
-		CloseHandle(kafl_vuln_handle);
-		unload_driver();
+
+		/* Execute a command from fuzzer.*/
+		if (!payload_buffer->IoControlCode)
+			set_ip0_filter(0);
+		else {
+			CloseHandle(kafl_vuln_handle);
+			unload_driver();
+			load_driver();
+			kafl_vuln_handle = open_driver();
+			set_ip0_filter(1);
+		}
 	}
     return 0;
 }

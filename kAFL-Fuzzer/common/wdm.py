@@ -64,13 +64,13 @@ class IRPProgram:
                 ok = self.__squashAny()
             elif rand.nOutOf(1, 100):
                 ok = self.__splice(corpus_programs)
-            elif rand.nOutOf(1, 500):
+            elif rand.nOutOf(1, 400):
                 ok = self.__insertIRP(corpus_programs)
-            elif rand.nOutOf(1, 30):
-                ok = self.__swapIRP()
             elif rand.nOutOf(1, 500):
                 ok = self.__removeIRP()
-
+            elif rand.nOutOf(1, 30):
+                ok = self.__swapIRP()
+            
             if rand.nOutOf(9, 11):
                 ok = self.__mutateArg()
 
@@ -227,18 +227,15 @@ class IRPProgram:
             print("IoControlCode %x InputBuffer %s" % (irp.IoControlCode, bytes(irp.InputBuffer[:0x20])))
         print("----------------------------------")
 
-class ReproMachine:
+class ProgramOptimizer:
     def __init__(self, q):
         self.q = q
-        self.new_execs = []
+        self.exec_results = []
     
     def add(self, program, exec_res, new_bytes, new_bits):
-        self.new_execs.append([program, exec_res, new_bytes, new_bits])
+        self.exec_results.append([program, exec_res, new_bytes, new_bits])
     
-    def new_exec_count(self):
-        return len(self.new_execs)
-
-    def get_program_execuntion_result(self, program):
+    def __execute(self, program):
         self.q.reload_driver()
 
         exec_res = None
@@ -246,23 +243,27 @@ class ReproMachine:
             exec_res = self.q.send_irp(irp)
 
         return exec_res.apply_lut()
+    
+    def optimizable(self):
+        return len(self.exec_results) > 0
 
-    def repro(self):
-        while len(self.new_execs):
-            program, old_res, new_bytes, new_bits = self.new_execs.pop()
+    def optimize(self):
+        while len(self.exec_results):
+            # quick validation for funky case.
+            program, old_res, new_bytes, new_bits = self.exec_results.pop()
             old_array = old_res.copy_to_array()
-            new_res = self.get_program_execuntion_result(program)
+            new_res = self.__execute(program)
             new_array = new_res.copy_to_array()
             if new_array != old_array:
                 print("[-] Reprodunction fail (funky case)")
-                time.sleep(10)
                 continue
                 
-            # TODO: program minimation
+            # program optimation
+            
             
             yield program
 
-class CorpusDatabase:
+class ProgramDatabase:
     def __init__(self, path):
         self.programs = []
         self.interface = {}

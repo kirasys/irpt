@@ -10,7 +10,7 @@ from common.debug import log_process
 from common.util import print_warning, print_fail, print_note, p32
 from common.execution_result import ExecutionResult
 from common.qemu import qemu
-from common.wdm import ReproMachine, CorpusDatabase, IRP
+from common.wdm import ProgramOptimizer, ProgramDatabase, IRP
 from fuzzer.statistics import MasterStatistics
 from fuzzer.bitmap import BitmapStorage
 
@@ -36,33 +36,31 @@ class Process:
 
         self.q = qemu(pid, self.config,
                       debug_mode=config.argument_values['debug'])
-        self.reproMachine = ReproMachine(self.q)
-        self.corpusDB = CorpusDatabase(config.argument_values['wdm']) # load interface
+        self.programOptimizer = ProgramOptimizer(self.q)
+        self.programDB = ProgramDatabase(config.argument_values['wdm']) # load interface
         #self.progs = ProgQueue(self.config, self.statistics)
 
-    def maybe_insert_program(self, program, exec_res, init_seed=False):
+    def maybe_insert_program(self, program, exec_res, init_bitmap=False):
         bitmap_array = exec_res.copy_to_array()
         bitmap = ExecutionResult.bitmap_from_bytearray(bitmap_array, exec_res.exit_reason,
                                                        exec_res.performance)
         bitmap.lut_applied = True  # since we received the bitmap from the should_send_to_master, the lut was already applied
         should_store, new_bytes, new_bits = self.bitmap_storage.should_store_in_queue(bitmap)
-        if should_store and not init_seed:
-            self.reproMachine.add(program, bitmap, new_bytes, new_bits)
+        if should_store and not init_bitmap:
+            self.programOptimizer.add(program, bitmap, new_bytes, new_bits)
 
     def execute(self, program, init_bitmap=False):
         score = 1
         irps = program.irps
         for i in range(len(irps)):
             exec_res = self.q.send_irp(irps[i])
-
             is_new_input = self.bitmap_storage.should_send_to_master(exec_res)
             crash = exec_res.is_crash()
 
-            if is_new_input:
-                program.dump()
+            if is_new_input and not crash:
                 new_program = program.clone_with_interface(irps[:i+1])
+                new_program.dump()
                 self.maybe_insert_program(new_program, exec_res, init_bitmap)
-                return 1
                 score += 100
             else:
                 log_process("Crashing input found (%s), but not new (discarding)" % (exec_res.exit_reason))
@@ -78,23 +76,23 @@ class Process:
         if not self.q.start():
             return
 
-        program = self.corpusDB.getInput()
+        program = self.programDB.getInput()
         self.execute(program, init_bitmap=True)
             
         while True:
-            program = self.corpusDB.getInput()
+            program = self.programDB.getInput()
             
             hp = 10
             while hp > 0:
-                program.mutate(self.corpusDB.programs)
+                program.mutate(self.programDB.programs)
                 hp -= self.execute(program)
                 
-                if self.reproMachine.new_exec_count():
+                if self.programOptimizer.optimizable():
                     print("[+] Reproduction Machine started.")
-                    self.corpusDB.add(list(self.reproMachine.repro()))
+                    self.programDB.add(list(self.programOptimizer.optimize()))
                     print("[+] Reproduction Machine end.")
                 else:
-                    self.q.reload_driver()
+                    self.q.revert_driver()
                 
     def shutdown(self):
         self.q.shutdown()

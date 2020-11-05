@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "type_traits": "c",
-        "*.inc": "c"
+        "*.inc": "c",
+        "*.tcc": "cpp"
     }
 }
