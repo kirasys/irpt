@@ -58,8 +58,8 @@
 #define HPRINTF_MAX_SIZE					0x1000					/* up to 4KB hprintf strings */
 
 /* agent action */
-#define RUN_NODE 			0
-#define RELOAD_DRIVER		1
+#define DRIVER_REVERT 		0
+#define DRIVER_RELOAD		1
 
 typedef struct{
 	uint32_t IoControlCode;

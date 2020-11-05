@@ -164,42 +164,38 @@ HANDLE open_driver() {
 	return kafl_vuln_handle;
 }
 
-void set_ip0_filter(int reloaded) {
-	if (reloaded) {
-		LPVOID drivers[ARRAY_SIZE];
-		DWORD cbNeeded;
-		int cDrivers, i;
-		NTSTATUS status;
+void set_ip0_filter() {
+	LPVOID drivers[ARRAY_SIZE];
+	DWORD cbNeeded;
+	int cDrivers, i;
+	NTSTATUS status;
 
-		if (EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded) && cbNeeded < sizeof(drivers))
-		{
-			cDrivers = cbNeeded / sizeof(drivers[0]);
-			PRTL_PROCESS_MODULES ModuleInfo;
+	if (EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded) && cbNeeded < sizeof(drivers))
+	{
+		cDrivers = cbNeeded / sizeof(drivers[0]);
+		PRTL_PROCESS_MODULES ModuleInfo;
 
-			ModuleInfo = (PRTL_PROCESS_MODULES)VirtualAlloc(NULL, 1024 * 1024, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		ModuleInfo = (PRTL_PROCESS_MODULES)VirtualAlloc(NULL, 1024 * 1024, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
-			if (!ModuleInfo) {
-				goto fail;
-			}
-
-			if (!NT_SUCCESS(status = NtQuerySystemInformation((SYSTEM_INFORMATION_CLASS)11, ModuleInfo, 1024 * 1024, NULL))) {
-				VirtualFree(ModuleInfo, 0, MEM_RELEASE);
-				goto fail;
-			}
-
-			for (i = 0; i < cDrivers; i++) {
-				PCHAR driver_filename = (PCHAR)ModuleInfo->Modules[i].FullPathName + ModuleInfo->Modules[i].OffsetToFileName;
-				if (!strcmp(driver_filename, DRIVERNAME)) {
-					hprintf("[+] Set ip0 filter.");
-					kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, drivers[i], ((UINT64)drivers[i]) + ModuleInfo->Modules[i].ImageSize);
-					break;
-				}
-			}
-			VirtualFree(ModuleInfo, 0, MEM_RELEASE);
+		if (!ModuleInfo) {
+			goto fail;
 		}
+
+		if (!NT_SUCCESS(status = NtQuerySystemInformation((SYSTEM_INFORMATION_CLASS)11, ModuleInfo, 1024 * 1024, NULL))) {
+			VirtualFree(ModuleInfo, 0, MEM_RELEASE);
+			goto fail;
+		}
+
+		for (i = 0; i < cDrivers; i++) {
+			PCHAR driver_filename = (PCHAR)ModuleInfo->Modules[i].FullPathName + ModuleInfo->Modules[i].OffsetToFileName;
+			if (!strcmp(driver_filename, DRIVERNAME)) {
+				hprintf("[+] Set ip0 filter.");
+				kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, drivers[i], ((UINT64)drivers[i]) + ModuleInfo->Modules[i].ImageSize);
+				break;
+			}
+		}
+		VirtualFree(ModuleInfo, 0, MEM_RELEASE);
 	}
-	else
-		kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, 0, 0);
 
 fail:
 	return;
@@ -226,7 +222,7 @@ int main(int argc, char** argv){
     create_service();
 	load_driver();
 	HANDLE kafl_vuln_handle = open_driver();
-	set_ip0_filter(1);
+	set_ip0_filter();
 	
 	while(1) {
 		/* set ip0 filter */
@@ -254,14 +250,15 @@ int main(int argc, char** argv){
 		}
 
 		/* Execute a command from fuzzer.*/
-		if (!payload_buffer->IoControlCode)
-			set_ip0_filter(0);
-		else {
+		uint32_t cmd = payload_buffer->IoControlCode;
+		if (cmd == DRIVER_REVERT)
+			kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, 0, 0);
+		else if (cmd == DRIVER_RELOAD){
 			CloseHandle(kafl_vuln_handle);
 			unload_driver();
 			load_driver();
 			kafl_vuln_handle = open_driver();
-			set_ip0_filter(1);
+			set_ip0_filter();
 		}
 	}
     return 0;
