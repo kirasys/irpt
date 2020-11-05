@@ -250,7 +250,7 @@ class ProgramOptimizer:
             exec_res = self.q.send_irp(irp)
 
         return exec_res.apply_lut()
-    
+
     def optimizable(self):
         return len(self.exec_results) > 0
 
@@ -319,4 +319,4 @@ class ProgramDatabase:
         return mutated
     
     def add(self, programs):
-        self.programs += programs
+        self.programs += copy.deepcopy(programs)

@@ -24,6 +24,7 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 #include "kafl_user.h"
 
 
+
 LPCSTR SVCNAME = "toy";
 LPCSTR DRIVERNAME = "toy_driver.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\toy_driver.sys";

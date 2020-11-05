@@ -714,9 +714,10 @@ class qemu:
     def send_irp(self, irp, retry=0):
         try:
             """
-            if irp.IoControlCode == 0x222003 and irp.InputBuffer[0] == ord('C'):
-                print('CCCC')
+            if irp.IoControlCode == 0xa3350404:
+                print(irp.InputBufferLength)
             """
+            #print(bytes(irp.InputBuffer[:0x30]))
             self.set_payload(irp)
             return self.send_payload()
         except (ValueError, BrokenPipeError):
