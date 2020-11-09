@@ -73,7 +73,7 @@ def prepare_working_dir(config):
         return False
 
     folders = ["/corpus/regular", "/corpus/crash",
-               "/corpus/kasan", "/corpus/timeout",
+               "/corpus/unreproduced", "/corpus/timeout",
                "/metadata", "/bitmaps", "/imports"]
 
     shutil.rmtree(work_dir, ignore_errors=True)

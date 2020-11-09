@@ -5,7 +5,8 @@ import random
 
 from common import rand
 from common.debug import log_process
-from common.util import array2int, int2array
+from common.util import array2int, int2array, p32, atomic_write
+from common.config import FuzzerConfiguration
 
 def to_range(rg):
     start, end = rg.split('-')
@@ -26,9 +27,31 @@ class IRPProgram:
     MAX_PAYLOAD_LEN = 0x1000
     maxDelta = 35
 
+    NextID = 0
     def __init__(self, interface, irps=[]):
         self.irps = irps
         self.interface = interface
+
+    def dump(self):
+        print("-------------Program--------------")
+        for irp in self.irps:
+            print("IoControlCode %x InputBuffer %s" % (irp.IoControlCode, bytes(irp.InputBuffer[:0x20])))
+        print("----------------------------------")
+
+    def serialize(self):
+        data = b''
+        for irp in self.irps:
+            data += p32(irp.IoControlCode)
+            data += p32(irp.InputBufferLength)
+            data += p32(irp.OutputBufferLength)
+            data += bytes(irp.InputBuffer)
+        return data
+
+    def save_to_file(self, exit_reason='regular'):
+        workdir = FuzzerConfiguration().argument_values['work_dir']
+        filename = "/corpus/%s/payload_%05d" % (exit_reason, IRPProgram.NextID)
+        atomic_write(workdir + filename, self.serialize())
+        IRPProgram.NextID += 1
 
     def clone_with_interface(self, irps=[]):
         return IRPProgram(self.interface, copy.deepcopy(irps))
@@ -63,13 +86,13 @@ class IRPProgram:
         while len(self.irps) != 0 and not ok:
             if rand.oneOf(5):
                 ok = self.__squashAny()
-            elif rand.nOutOf(1, 100):
+            elif rand.nOutOf(1, 300):
                 ok = self.__splice(corpus_programs)
-            elif rand.nOutOf(1, 400):
+            elif rand.nOutOf(1, 200):
                 ok = self.__insertIRP(corpus_programs)
             elif rand.nOutOf(1, 500):
                 ok = self.__removeIRP()
-            elif rand.nOutOf(1, 30):
+            elif rand.nOutOf(1, 200):
                 ok = self.__swapIRP()
             
             if rand.nOutOf(9, 11):
@@ -222,12 +245,6 @@ class IRPProgram:
     def __appendBunch(self, buffer):
         pass
     
-    def dump(self):
-        print("-------------Program--------------")
-        for irp in self.irps:
-            print("IoControlCode %x InputBuffer %s" % (irp.IoControlCode, bytes(irp.InputBuffer[:0x20])))
-        print("----------------------------------")
-
 class ProgramOptimizer:
     def __init__(self, q):
         self.q = q
@@ -255,24 +272,29 @@ class ProgramOptimizer:
         return len(self.exec_results) > 0
 
     def optimize(self):
+        optimized = []
         while len(self.exec_results):
-            repro_program, old_res, new_bytes, new_bits = self.exec_results.pop()
+            program, old_res, new_bytes, new_bits = self.exec_results.pop()
 
             # quick validation for funky case.
+            print("[+] Validation")
+            program.dump()
             old_array = old_res.copy_to_array()
-            new_res = self.__execute(repro_program, reload=True)
+            new_res = self.__execute(program, reload=True)
             new_array = new_res.copy_to_array()
             if new_array != old_array:
-                log_process("[-] Reprodunction fail (funky case)")
+                print("[-] Reprodunction fail (funky case)")
                 continue
+            print("[+] Validation end")
                 
             # program optimation
-            if len(repro_program.irps) == 1:
-                return repro_program
+            if len(program.irps) == 1:
+                optimized.append(program)
+                continue
 
-            valid_irps = []
-            for i in range(len(repro_program.irps)):
-                test_program = repro_program.clone_with_interface(repro_program.irps[:i] + repro_program.irps[i+1:])
+            i = 0
+            while i < len(program.irps):
+                test_program = program.clone_with_interface(program.irps[:i] + program.irps[i+1:])
                 exec_res = self.__execute(test_program, reload=False)
 
                 valid = False
@@ -285,11 +307,18 @@ class ProgramOptimizer:
                         if exec_res.cbuffer[index] != new_bits[index]:
                             valid = True
                             break
-                if valid:
-                    valid_irps.append(repro_program.irps[i])
+                if not valid:
+                    del program.irps[i]
+                else:
+                    i += 1
 
-            if valid_irps:
-                yield repro_program.clone_with_interface(valid_irps)
+            if len(program.irps):
+                program.dump()
+                print("[+] Optimization end\n")
+                optimized.append(program.clone_with_interface(program.irps))
+
+        self.exec_results = []  # clear
+        return optimized
 
 
 class ProgramDatabase:
@@ -320,3 +349,7 @@ class ProgramDatabase:
     
     def add(self, programs):
         self.programs += copy.deepcopy(programs)
+    
+    def save(self):
+        for p in self.programs:
+            p.save_to_file()

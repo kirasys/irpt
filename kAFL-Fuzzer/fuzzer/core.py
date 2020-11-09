@@ -53,8 +53,7 @@ def start(config):
     
     work_dir   = config.argument_values["work_dir"]
     seed_dir   = config.argument_values["seed_dir"]
-    num_slaves = config.argument_values['p']
-
+    
     if config.argument_values['v'] or config.argument_values['debug']:
         enable_logging(work_dir)
 
@@ -72,6 +71,7 @@ def start(config):
     except KeyboardInterrupt:
         print_note("Received Ctrl-C")
     finally:
+        process.programDB.save()
         process.shutdown()
 
     time.sleep(0.2)

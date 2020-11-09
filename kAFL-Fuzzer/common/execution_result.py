@@ -35,6 +35,9 @@ class ExecutionResult:
     def is_crash(self):
         return self.exit_reason != "regular"
 
+    def is_timeout(self):
+        return self.exit_reason == "timeout"
+
     def is_regular(self):
         return not self.is_crash()
 

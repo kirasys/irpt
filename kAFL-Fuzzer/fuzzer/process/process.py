@@ -6,6 +6,7 @@ import mmh3
 import time
 import struct
 
+from common import rand
 from common.debug import log_process
 from common.util import print_warning, print_fail, print_note, p32
 from common.execution_result import ExecutionResult
@@ -59,7 +60,6 @@ class Process:
         irp = self.cur_program.irps[index]
         exec_res = self.q.send_irp(irp)
         is_new_input = self.bitmap_storage.should_send_to_master(exec_res)
-        crash = exec_res.is_crash()
 
         if is_new_input:
             new_program = self.cur_program.clone_with_interface(self.cur_program.irps[:index+1])
@@ -68,12 +68,11 @@ class Process:
             log_process("Crashing input found (%s), but not new (discarding)" % (exec_res.exit_reason))
 
         # restart Qemu on crash
-        if crash:
-            #self.statistics.event_reload()
+        if exec_res.is_crash():
             print("[+] Crash found!")
             self.q.reload()
+            self.cur_program.save_to_file(exec_res.exit_reason)
             return True
-        
         return False
 
     def execute(self, program):
@@ -139,21 +138,21 @@ class Process:
             
             for _ in range(10):
                 program.mutate(self.programDB.programs)
-                self.execute(program)
+                #print(len(program.irps))
+                if rand.oneOf(10):
+                    self.execute_deterministic(program)
+                else:    
+                    self.execute(program)
                 
                 while self.programOptimizer.optimizable():
-                    new_programs = list(self.programOptimizer.optimize())
-                    self.programOptimizer.clear()
+                    new_programs = self.programOptimizer.optimize()
                     if new_programs:
                         log_process("[+] New interesting program found.")
                         self.programDB.add(new_programs)
                         
                         # start deterministic execution.
                         for p in new_programs:
-                            p.dump()
-                            print("Start deterministic execution.")
                             self.execute_deterministic(p)
-                            print("End deterministic execution.")
                             
                 
     def shutdown(self):
