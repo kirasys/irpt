@@ -72,7 +72,7 @@ def prepare_working_dir(config):
     if os.path.exists(work_dir) and not purge:
         return False
 
-    folders = ["/corpus/regular", "/corpus/crash",
+    folders = ["/corpus/regular", "/corpus/unique", "/corpus/crash",
                "/corpus/unreproduced", "/corpus/timeout",
                "/metadata", "/bitmaps", "/imports"]
 

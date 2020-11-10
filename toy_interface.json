@@ -1,1 +1,1 @@
-[{"IoControlCode":"0x222013", "InputBufferLength": ["2-2"], "OutputBufferLength":["0-inf"]}, {"IoControlCode": "0x222023", "InputBufferLength": ["10-16"], "OutputBufferLength":["0-inf"]}]
+[{"IoControlCode":"0x222003", "InputBufferLength": ["0-4"], "OutputBufferLength":["0-inf"]}, {"IoControlCode":"0x222013", "InputBufferLength": ["0-2"], "OutputBufferLength":["0-inf"]}, {"IoControlCode": "0x222023", "InputBufferLength": ["0-16"], "OutputBufferLength":["0-inf"]}]

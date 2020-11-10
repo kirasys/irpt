@@ -12,6 +12,14 @@ def to_range(rg):
     start, end = rg.split('-')
     return range(int(start), int(end) + 1 if end != 'inf' else 0xffffffff)
 
+def get_new_coverage_counts(bitmap, new_bitmap):
+    count = 0
+    for i in range(len(bitmap)):
+        a = new_bitmap[i]
+        if (a | bitmap[i]) != bitmap[i]:
+            count += 1
+    return count
+
 class IRP:
     def __init__(self, iocode, inlength, outlength, inbuffer=''):
         self.IoControlCode = iocode
@@ -28,12 +36,13 @@ class IRPProgram:
     maxDelta = 35
 
     NextID = 0
-    def __init__(self, interface, irps=[]):
+    def __init__(self, interface, irps=[], bitmap=None):
         self.irps = irps
         self.interface = interface
+        self.bitmap = bitmap
 
-    def dump(self):
-        print("-------------Program--------------")
+    def dump(self, label="Program"):
+        print("-------------%s--------------" % label)
         for irp in self.irps:
             print("IoControlCode %x InputBuffer %s" % (irp.IoControlCode, bytes(irp.InputBuffer[:0x20])))
         print("----------------------------------")
@@ -53,8 +62,11 @@ class IRPProgram:
         atomic_write(workdir + filename, self.serialize())
         IRPProgram.NextID += 1
 
-    def clone_with_interface(self, irps=[]):
-        return IRPProgram(self.interface, copy.deepcopy(irps))
+    def clone_with_irps(self, irps):
+        return IRPProgram(self.interface, irps=copy.deepcopy(irps), bitmap=self.bitmap)
+    
+    def clone_with_bitmap(self, bitmap):
+        return IRPProgram(self.interface, irps=self.irps, bitmap=bitmap)
 
     def __satisfiable(self, irp, length):
         inbuffer_ranges = self.interface[irp.IoControlCode]["InputBufferRange"]
@@ -277,24 +289,22 @@ class ProgramOptimizer:
             program, old_res, new_bytes, new_bits = self.exec_results.pop()
 
             # quick validation for funky case.
-            print("[+] Validation")
-            program.dump()
             old_array = old_res.copy_to_array()
             new_res = self.__execute(program, reload=True)
             new_array = new_res.copy_to_array()
             if new_array != old_array:
-                print("[-] Reprodunction fail (funky case)")
                 continue
-            print("[+] Validation end")
-                
+            program.bitmap = list(old_array)
+
             # program optimation
-            if len(program.irps) == 1:
+            if len(program.irps) <= 1:
                 optimized.append(program)
                 continue
 
             i = 0
-            while i < len(program.irps):
-                test_program = program.clone_with_interface(program.irps[:i] + program.irps[i+1:])
+            exec_res = None
+            while i < len(program.irps) and len(program.irps) > 1:
+                test_program = program.clone_with_irps(program.irps[:i] + program.irps[i+1:])
                 exec_res = self.__execute(test_program, reload=False)
 
                 valid = False
@@ -313,9 +323,7 @@ class ProgramOptimizer:
                     i += 1
 
             if len(program.irps):
-                program.dump()
-                print("[+] Optimization end\n")
-                optimized.append(program.clone_with_interface(program.irps))
+                optimized.append(program.clone_with_bitmap(list(exec_res.copy_to_array())))
 
         self.exec_results = []  # clear
         return optimized
@@ -324,6 +332,7 @@ class ProgramOptimizer:
 class ProgramDatabase:
     def __init__(self, path):
         self.programs = []
+        self.unique_programs = []
         self.interface = {}
 
         interface_json = json.loads(open(path, 'r').read())
@@ -334,22 +343,52 @@ class ProgramDatabase:
 
             self.interface[iocode] = {"InputBufferRange": inbuffer_ranges, "OutputBufferRange": outbuffer_ranges}
 
-    def getInput(self):
+    def getAll(self):
+        return self.programs
+
+    def __unique_selection(self, new_programs):
+        if len(self.programs) <= 0:
+            return
+        
+        for new_program in new_programs:
+            new_bitmap = new_program.bitmap
+            # remove a duplicated program.
+            i = 0
+            while i < len(self.unique_programs):
+                old_bitmap = self.unique_programs[i].bitmap
+                count = get_new_coverage_counts(new_bitmap, old_bitmap)
+                if count == 0:
+                    self.unique_programs[i].dump("delete")
+                    del self.unique_programs[i]
+                else:
+                    i += 1
+            self.unique_programs.append(new_program)
+
+    def getRandom(self):
         if len(self.programs) == 0: # generation
             program = IRPProgram(self.interface)
             program.generate()
             self.programs.append(program)
             return self.programs[0]
 
-        # mutation
-        program = random.choice(self.programs) # TODO: scoring programs
-        mutated = copy.deepcopy(program)
-        mutated.mutate(self.programs)
-        return mutated
+        if len(self.unique_programs) == 0 or rand.oneOf(10):        
+            program = random.choice(self.programs)
+        else:
+            program = random.choice(self.unique_programs)
+        return copy.deepcopy(program)
     
     def add(self, programs):
         self.programs += copy.deepcopy(programs)
+        self.__unique_selection(programs)
+
+        for p in self.unique_programs:
+            p.dump("Unique program")
+        print()
+        print()
     
     def save(self):
+        for p in self.unique_programs:
+            p.save_to_file("unique")
         for p in self.programs:
-            p.save_to_file()
+            p.save_to_file("regular")
+    

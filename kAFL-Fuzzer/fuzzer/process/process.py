@@ -62,7 +62,7 @@ class Process:
         is_new_input = self.bitmap_storage.should_send_to_master(exec_res)
 
         if is_new_input:
-            new_program = self.cur_program.clone_with_interface(self.cur_program.irps[:index+1])
+            new_program = self.cur_program.clone_with_irps(self.cur_program.irps[:index+1])
             self.maybe_insert_program(new_program, exec_res)
         else:
             log_process("Crashing input found (%s), but not new (discarding)" % (exec_res.exit_reason))
@@ -129,15 +129,15 @@ class Process:
         if not self.q.start():
             return
 
-        program = self.programDB.getInput()
+        program = self.programDB.getRandom()
         self.execute(program)
         self.programOptimizer.clear()   # Default code coverage.
-            
+
         while True:
-            program = self.programDB.getInput()
+            program = self.programDB.getRandom()
             
             for _ in range(10):
-                program.mutate(self.programDB.programs)
+                program.mutate(self.programDB.getAll())
                 #print(len(program.irps))
                 if rand.oneOf(10):
                     self.execute_deterministic(program)
@@ -153,7 +153,6 @@ class Process:
                         # start deterministic execution.
                         for p in new_programs:
                             self.execute_deterministic(p)
-                            
                 
     def shutdown(self):
         self.q.shutdown()
