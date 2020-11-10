@@ -25,7 +25,7 @@ import common.qemu_protocol as qemu_protocol
 from common.debug import log_qemu
 from common.execution_result import ExecutionResult
 from common.util import read_binary_file, atomic_write, print_fail, print_warning, strdump, p32
-from common.wdm import IRP
+from wdm.irp import IRP
 
 def to_string_32(value):
     return [(value >> 24) & 0xff,
@@ -713,10 +713,6 @@ class qemu:
 
     def send_irp(self, irp, retry=0):
         try:
-            """
-            if irp.IoControlCode == 0xa3350404:
-                print(irp.InputBufferLength)
-            """
             #print(bytes(irp.InputBuffer[:0x30]))
             self.set_payload(irp)
             return self.send_payload()

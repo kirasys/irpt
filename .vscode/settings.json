@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "type_traits": "c",
-        "*.inc": "c",
-        "*.tcc": "cpp"
-    }
-}

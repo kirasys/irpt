@@ -4,13 +4,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-Startup routines for kAFL Fuzzer.
+Startup routines for IRPT Fuzzer.
 
 Spawn a Master and one or more Slave processes, where Master implements the
 global fuzzing queue and scheduler and Slaves implement mutation stages and
 Qemu/KVM execution.
 
-Prepare the kAFL workdir and copy any provided seeds to be picked up by the scheduler.
+Prepare the IRPT workdir and copy any provided seeds to be picked up by the scheduler.
 """
 
 import multiprocessing
@@ -21,7 +21,7 @@ import sys
 from common.debug import enable_logging
 from common.self_check import post_self_check
 from common.util import prepare_working_dir, print_fail, print_note, print_warning, copy_seed_files
-from fuzzer.process.process import Process
+from fuzzer.process.irpt import IRPT
 
 def qemu_sweep():
     pids = pgrep.pgrep("qemu")
@@ -65,14 +65,14 @@ def start(config):
         print_fail("Error when importing seeds. Exit.")
         return 1
 
-    process = Process(config) # Todo: multprocess?
+    irpt = IRPT(config)
     try:
-        process.loop()
+        irpt.loop()
     except KeyboardInterrupt:
         print_note("Received Ctrl-C")
     finally:
-        process.programDB.save()
-        process.shutdown()
+        irpt.database.save()
+        irpt.shutdown()
 
     time.sleep(0.2)
     qemu_sweep()

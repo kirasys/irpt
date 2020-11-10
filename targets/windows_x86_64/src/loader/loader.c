@@ -86,7 +86,7 @@ UINT64 resolve_KeBugCheck(PCSTR kfunc){
 }
 /* -------------- */
 
-static inline void run_program(void* target){
+static inline void run_program(char* target){
     PROCESS_INFORMATION p1;
     STARTUPINFOA s1;
 

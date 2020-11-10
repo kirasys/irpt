@@ -112,7 +112,7 @@ def check_vmx_pt():
 def check_apple_osk(config):
     if config.argument_values["macOS"]:
         if config.config_values["APPLE-SMC-OSK"] == "":
-            print(FAIL + ERROR_PREFIX + "APPLE SMC OSK is missing in kafl.ini!" + ENDC)
+            print(FAIL + ERROR_PREFIX + "APPLE SMC OSK is missing in irpt.ini!" + ENDC)
             return False
     return True
 
@@ -138,9 +138,9 @@ def check_apple_ignore_msrs(config):
 
 
 def check_kafl_ini(rootdir):
-    configfile = rootdir + "kafl.ini"
+    configfile = rootdir + "irpt.ini"
     if not os.path.exists(configfile):
-        print(WARNING + WARNING_PREFIX + "Could not find kafl.ini. Creating default config at " + configfile + ENDC)
+        print(WARNING + WARNING_PREFIX + "Could not find irpt.ini. Creating default config at " + configfile + ENDC)
         from common.config import FuzzerConfiguration
         FuzzerConfiguration(configfile,skip_args=True).create_initial_config()
         return False
@@ -149,7 +149,7 @@ def check_kafl_ini(rootdir):
 
 def check_qemu_version(config):
     if not config.config_values["QEMU_KAFL_LOCATION"] or config.config_values["QEMU_KAFL_LOCATION"] == "":
-        print(FAIL + ERROR_PREFIX + "QEMU_KAFL_LOCATION is not set in kafl.ini!" + ENDC)
+        print(FAIL + ERROR_PREFIX + "QEMU_KAFL_LOCATION is not set in irpt.ini!" + ENDC)
         return False
 
     if not os.path.exists(config.config_values["QEMU_KAFL_LOCATION"]):
@@ -176,7 +176,7 @@ def check_radamsa_location(config):
         return True
 
     if not config.config_values["RADAMSA_LOCATION"] or config.config_values["RADAMSA_LOCATION"] == "":
-        print(FAIL + ERROR_PREFIX + "RADAMSA_LOCATION is not set in kafl.ini!" + ENDC)
+        print(FAIL + ERROR_PREFIX + "RADAMSA_LOCATION is not set in irpt.ini!" + ENDC)
         return False
 
     if not os.path.exists(config.config_values["RADAMSA_LOCATION"]):
