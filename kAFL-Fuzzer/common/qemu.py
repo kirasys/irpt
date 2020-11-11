@@ -713,7 +713,7 @@ class qemu:
 
     def send_irp(self, irp, retry=0):
         try:
-            #print(bytes(irp.InputBuffer[:0x30]))
+            #print(hex(irp.IoControlCode), hex(irp.InputBufferLength), bytes(irp.InputBuffer[:0x30]))
             self.set_payload(irp)
             return self.send_payload()
         except (ValueError, BrokenPipeError):

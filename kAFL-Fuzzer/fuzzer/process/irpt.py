@@ -72,6 +72,7 @@ class IRPT:
         if exec_res.is_crash():
             print("[+] Crash found!")
             self.q.reload()
+            self.cur_program.dump("%s program" % exec_res.exit_reason)
             self.cur_program.save_to_file(exec_res.exit_reason)
             return True
         return False

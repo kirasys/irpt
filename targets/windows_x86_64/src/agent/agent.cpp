@@ -42,8 +42,8 @@ int main(int argc, char** argv){
     kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_CR3, 0);
 
     /* init driver and filter */
-    if (!create_service() || !load_driver())
-		return 0;
+	create_service();
+	load_driver();
 	
 	HANDLE kafl_vuln_handle = open_driver();
 	if (!kafl_vuln_handle)

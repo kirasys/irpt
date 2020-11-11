@@ -1,13 +1,14 @@
+/*
 LPCSTR SVCNAME = "toy";
 LPCSTR DRIVERNAME = "toy_driver.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\toy_driver.sys";
 LPCSTR DRIVER_SVCPATH = "\\\\.\\toy";
-/*
+*/
 LPCSTR SVCNAME = "medcored";
 LPCSTR DRIVERNAME = "medcored.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\medcored.sys";
 LPCSTR DRIVER_SVCPATH = "\\\\.\\medcored";
-*/
+
 
 #include <psapi.h>
 #include <winternl.h>
