@@ -38,6 +38,7 @@ class Optimizer:
             program.bitmap = list(old_array)
 
             # program optimation
+            program.exec_count = 0
             program.complexity += 1
 
             if len(program.irps) <= 1:

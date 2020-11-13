@@ -4,6 +4,7 @@ from   pprint import pformat
 import json
 import mmh3
 import time
+import copy
 import struct
 
 from common import rand
@@ -135,20 +136,21 @@ class IRPT:
         if not self.q.start():
             return
 
-        program = self.database.getRandom()
+        program = self.database.get_next()
         self.execute(program)
         self.optimizer.clear()   # Default code coverage.
 
         while True:
-            program = self.database.getRandom()
+            program = self.database.get_next()
 
             for _ in range(10):
-                program.mutate(self.database.getAll())
-                #print(len(program.irps))
+                program_snapshot = copy.deepcopy(program)
+                program_snapshot.mutate(self.database.getAll())
                 if rand.oneOf(10):
-                    self.execute_deterministic(program)
+                    self.execute_deterministic(program_snapshot)
                 else:    
-                    self.execute(program)
+                    self.execute(program_snapshot)
+                program.exec_count += 1
 
                 # Get a new interesting corpus
                 while self.optimizer.optimizable():
@@ -158,12 +160,12 @@ class IRPT:
                         self.database.add(new_programs)
                         
                         # start deterministic execution.
-                        for p in new_programs:
-                            self.execute_deterministic(p)
+                        for prog in new_programs:
+                            self.execute_deterministic(prog)
+                            prog.exec_count += 1
                 
                 # Crash reprodunction
-                if self.crasher.reproducible():
-                    self.crasher.reproduce()
+                self.crasher.reproduce()
                 
     def shutdown(self):
         self.q.shutdown()

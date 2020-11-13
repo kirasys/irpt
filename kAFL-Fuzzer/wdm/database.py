@@ -1,5 +1,4 @@
 import json
-import copy
 import random
 import numpy as np
 
@@ -14,15 +13,19 @@ def get_new_coverage_counts(bitmap, new_bitmap):
             count += 1
     return count
 
+COMPLEX_DOWN_THRESHOLD = 10000
+
 class Database:
     def __init__(self):
         self.programs = []
         self.unique_programs = []
         self.interface = {}
 
+        self.probability_map = []
+
     def dump(self):
         for i, p in enumerate(self.unique_programs):
-            p.dump("Unique program")
+            p.dump("Unique program (%.2f%%)" % (self.probability_map[i]*100))
         print('\n')
 
     def getAll(self):
@@ -46,8 +49,19 @@ class Database:
                     continue
                 i += 1
             self.unique_programs.append(new_program)
+        
+        # Calculate the probabbility map.
+        total_complexity = 0
+        self.probability_map = []
+        for uniq_program in self.unique_programs:
+            probabbility = max(1, uniq_program.complexity - (uniq_program.exec_count // COMPLEX_DOWN_THRESHOLD))
+            total_complexity += probabbility
+            self.probability_map.append(probabbility)
+        
+        for i, uniq_program in enumerate(self.unique_programs):
+            self.probability_map[i] /= total_complexity
 
-    def getRandom(self):
+    def get_next(self):
         if len(self.programs) == 0: # generation
             program = Program()
             program.generate()
@@ -57,11 +71,11 @@ class Database:
         if len(self.unique_programs) == 0 or rand.oneOf(10):        
             program = random.choice(self.programs)
         else:
-            program = random.choice(self.unique_programs)
-        return copy.deepcopy(program)
+            program = np.random.choice(self.unique_programs, p=self.probability_map)
+        return program
     
     def add(self, programs):
-        self.programs += copy.deepcopy(programs)
+        self.programs += programs
         self.__unique_selection(programs)
 
         self.dump()

@@ -19,10 +19,12 @@ class Program:
         self.irps = irps
         self.bitmap = bitmap
 
+        self.exec_count = exec_count
         self.complexity = complexity
 
     def dump(self, label="Program"):
         print("-------------%s--------------" % label)
+        print("Exec count : %d " % self.exec_count)
         print("Complexity : %d " % self.complexity)
         for irp in self.irps:
             print("IoControlCode %x InputBuffer %s" % (irp.IoControlCode, bytes(irp.InputBuffer[:0x20])))
@@ -44,7 +46,7 @@ class Program:
         Program.NextID += 1
 
     def clone(self, **kwargs):
-        return Program(complexity=self.complexity, **kwargs)
+        return Program(exec_count=self.exec_count, complexity=self.complexity, **kwargs)
 
     def clone_with_irps(self, irps):
         return self.clone(irps=copy.deepcopy(irps), bitmap=self.bitmap)
