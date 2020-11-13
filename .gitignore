@@ -3,5 +3,6 @@
 
 in
 out
+repro_out
 snapshot_win
 targets/windows_x86_64/bin

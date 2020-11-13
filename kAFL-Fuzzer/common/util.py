@@ -159,3 +159,4 @@ def int2array(v, size):
     return array
 
 p32 = lambda x : struct.pack('<I', x)
+u32 = lambda x : struct.unpack('<I', x)[0]

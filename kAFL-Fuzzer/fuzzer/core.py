@@ -22,7 +22,7 @@ from common.debug import enable_logging
 from common.self_check import post_self_check
 from common.util import prepare_working_dir, print_fail, print_note, print_warning, copy_seed_files
 from fuzzer.process.irpt import IRPT
-
+from wdm.interface import interface_manager
 def qemu_sweep():
     pids = pgrep.pgrep("qemu")
 
@@ -65,6 +65,10 @@ def start(config):
         print_fail("Error when importing seeds. Exit.")
         return 1
 
+    # Load WDM Interface information.
+    interface_manager.load(config.argument_values['wdm'])
+
+    # Start IRPT!
     irpt = IRPT(config)
     try:
         irpt.loop()

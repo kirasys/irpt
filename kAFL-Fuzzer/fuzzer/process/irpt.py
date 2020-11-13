@@ -14,6 +14,7 @@ from common.qemu import qemu
 from wdm.irp import IRP
 from wdm.optimizer import Optimizer
 from wdm.database import Database
+from wdm.crasher import Crasher
 from fuzzer.statistics import MasterStatistics
 from fuzzer.bitmap import BitmapStorage
 from fuzzer.technique import bitflip, arithmetic, interesting_values
@@ -41,7 +42,8 @@ class IRPT:
         self.q = qemu(pid, self.config,
                       debug_mode=config.argument_values['debug'])
         self.optimizer = Optimizer(self.q)
-        self.database = Database(config.argument_values['wdm']) # load interface
+        self.crasher = Crasher(self.q)
+        self.database = Database() # load interface
 
     def maybe_insert_program(self, program, exec_res):
         bitmap_array = exec_res.copy_to_array()
@@ -70,15 +72,17 @@ class IRPT:
 
         # restart Qemu on crash
         if exec_res.is_crash():
-            print("[+] Crash found!")
+            print("Crashed maybe?")
             self.q.reload()
-            self.cur_program.dump("%s program" % exec_res.exit_reason)
-            self.cur_program.save_to_file(exec_res.exit_reason)
+            self.crasher.add(self.cur_program.clone_with_irps(self.cur_program.irps[:index+1]))
             return True
         return False
 
-    def execute(self, program):
+    def __set_current_program(self, program):
         self.cur_program = program
+
+    def execute(self, program):
+        self.__set_current_program(program)
         self.q.revert_driver()
 
         for i in range(len(self.cur_program.irps)):
@@ -86,7 +90,7 @@ class IRPT:
                 return
 
     def execute_deterministic(self, program):
-        self.cur_program = program
+        self.__set_current_program(program)
 
         irps = self.cur_program.irps
         for index in range(len(irps)):
@@ -137,7 +141,7 @@ class IRPT:
 
         while True:
             program = self.database.getRandom()
-            
+
             for _ in range(10):
                 program.mutate(self.database.getAll())
                 #print(len(program.irps))
@@ -145,7 +149,8 @@ class IRPT:
                     self.execute_deterministic(program)
                 else:    
                     self.execute(program)
-                
+
+                # Get a new interesting corpus
                 while self.optimizer.optimizable():
                     new_programs = self.optimizer.optimize()
                     if new_programs:
@@ -155,6 +160,10 @@ class IRPT:
                         # start deterministic execution.
                         for p in new_programs:
                             self.execute_deterministic(p)
+                
+                # Crash reprodunction
+                if self.crasher.reproducible():
+                    self.crasher.reproduce()
                 
     def shutdown(self):
         self.q.shutdown()

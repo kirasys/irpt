@@ -35,7 +35,6 @@ PT_TRASHED_KASAN = b'N'
 
 ABORT = b'H'
 
-# kirasys
 LOCK = b'l'
 
 CMDS = {
@@ -71,3 +70,8 @@ CMDS = {
 
     ABORT: "ABORT",
 }
+
+# Agent commands
+AGENT_EXIT = 0
+DRIVER_REVERT = 1
+DRIVER_RELOAD = 2

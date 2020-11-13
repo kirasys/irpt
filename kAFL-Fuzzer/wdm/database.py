@@ -1,13 +1,10 @@
 import json
 import copy
 import random
+import numpy as np
 
 from common import rand
 from wdm.program import Program
-
-def to_range(rg):
-    start, end = rg.split('-')
-    return range(int(start), int(end) + 1 if end != 'inf' else 0xffffffff)
 
 def get_new_coverage_counts(bitmap, new_bitmap):
     count = 0
@@ -18,18 +15,15 @@ def get_new_coverage_counts(bitmap, new_bitmap):
     return count
 
 class Database:
-    def __init__(self, path):
+    def __init__(self):
         self.programs = []
         self.unique_programs = []
         self.interface = {}
 
-        interface_json = json.loads(open(path, 'r').read())
-        for constraint in interface_json:
-            iocode = int(constraint["IoControlCode"], 16)
-            inbuffer_ranges = list(map(to_range, constraint["InputBufferLength"]))
-            outbuffer_ranges = list(map(to_range, constraint["OutputBufferLength"]))
-
-            self.interface[iocode] = {"InputBufferRange": inbuffer_ranges, "OutputBufferRange": outbuffer_ranges}
+    def dump(self):
+        for i, p in enumerate(self.unique_programs):
+            p.dump("Unique program")
+        print('\n')
 
     def getAll(self):
         return self.programs
@@ -40,21 +34,22 @@ class Database:
         
         for new_program in new_programs:
             new_bitmap = new_program.bitmap
-            # remove a duplicated program.
+
+            # Remove a duplicated unique program.
             i = 0
             while i < len(self.unique_programs):
                 old_bitmap = self.unique_programs[i].bitmap
                 count = get_new_coverage_counts(new_bitmap, old_bitmap)
-                if count == 0:
+                if count == 0:  # duplicated coverage
                     self.unique_programs[i].dump("delete")
                     del self.unique_programs[i]
-                else:
-                    i += 1
+                    continue
+                i += 1
             self.unique_programs.append(new_program)
 
     def getRandom(self):
         if len(self.programs) == 0: # generation
-            program = Program(self.interface)
+            program = Program()
             program.generate()
             self.programs.append(program)
             return self.programs[0]
@@ -69,10 +64,7 @@ class Database:
         self.programs += copy.deepcopy(programs)
         self.__unique_selection(programs)
 
-        for p in self.unique_programs:
-            p.dump("Unique program")
-        print()
-        print()
+        self.dump()
     
     def save(self):
         for p in self.unique_programs:

@@ -714,6 +714,7 @@ class qemu:
     def send_irp(self, irp, retry=0):
         try:
             #print(hex(irp.IoControlCode), hex(irp.InputBufferLength), bytes(irp.InputBuffer[:0x30]))
+            #sys.stdout.write("\033[F")
             self.set_payload(irp)
             return self.send_payload()
         except (ValueError, BrokenPipeError):
@@ -729,8 +730,8 @@ class qemu:
         return self.send_irp(irp, retry=retry+1)
     
     def revert_driver(self):
-        self.send_irp(IRP(0, 0, 0))
+        self.send_irp(IRP(qemu_protocol.DRIVER_REVERT, 0, 0))
     
     def reload_driver(self):
-        self.send_irp(IRP(1, 0, 0))
+        self.send_irp(IRP(qemu_protocol.DRIVER_RELOAD, 0, 0))
     

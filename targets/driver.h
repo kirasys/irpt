@@ -1,15 +1,20 @@
-/*
 LPCSTR SVCNAME = "toy";
 LPCSTR DRIVERNAME = "toy_driver.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\toy_driver.sys";
 LPCSTR DRIVER_SVCPATH = "\\\\.\\toy";
-*/
+
+/*
 LPCSTR SVCNAME = "medcored";
 LPCSTR DRIVERNAME = "medcored.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\medcored.sys";
 LPCSTR DRIVER_SVCPATH = "\\\\.\\medcored";
-
-
+*/
+/*
+LPCSTR SVCNAME = "NTIOLib_X64";
+LPCSTR DRIVERNAME = "NTIOLib_X64.sys";
+LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\NTIOLib_X64.sys";
+LPCSTR DRIVER_SVCPATH = "\\\\.\\NTIOLib_MysticLight";
+*/
 #include <psapi.h>
 #include <winternl.h>
 #define ARRAY_SIZE 1024

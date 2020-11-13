@@ -6,20 +6,24 @@ from common.config import FuzzerConfiguration
 from common.util import array2int, int2array, p32, atomic_write
 
 from wdm.irp import IRP
+from wdm.interface import interface_manager
+
+MAX_IRP_COUNT = 1000
+MAX_PAYLOAD_LEN = 0x400
+MAX_DELTA = 35
 
 class Program:
-    MAX_IRP_COUNT = 1000
-    MAX_PAYLOAD_LEN = 0x1000
-    maxDelta = 35
-
     NextID = 0
-    def __init__(self, interface, irps=[], bitmap=None):
+    
+    def __init__(self, irps=[], bitmap=None, complexity=0, exec_count=0):
         self.irps = irps
-        self.interface = interface
         self.bitmap = bitmap
+
+        self.complexity = complexity
 
     def dump(self, label="Program"):
         print("-------------%s--------------" % label)
+        print("Complexity : %d " % self.complexity)
         for irp in self.irps:
             print("IoControlCode %x InputBuffer %s" % (irp.IoControlCode, bytes(irp.InputBuffer[:0x20])))
         print("----------------------------------")
@@ -39,22 +43,25 @@ class Program:
         atomic_write(workdir + filename, self.serialize())
         Program.NextID += 1
 
+    def clone(self, **kwargs):
+        return Program(complexity=self.complexity, **kwargs)
+
     def clone_with_irps(self, irps):
-        return Program(self.interface, irps=copy.deepcopy(irps), bitmap=self.bitmap)
-    
+        return self.clone(irps=copy.deepcopy(irps), bitmap=self.bitmap)
+        
     def clone_with_bitmap(self, bitmap):
-        return Program(self.interface, irps=self.irps, bitmap=bitmap)
+        return self.clone(irps=self.irps, bitmap=bitmap)
 
     def __satisfiable(self, irp, length):
-        inbuffer_ranges = self.interface[irp.IoControlCode]["InputBufferRange"]
+        inbuffer_ranges = interface_manager[irp.IoControlCode]["InputBufferRange"]
         for rg in inbuffer_ranges:
             if length not in rg:
                 return False
         return True
 
     def __generateIRP(self, iocode):
-        inbuffer_ranges = self.interface[iocode]["InputBufferRange"]
-        outbuffer_ranges = self.interface[iocode]["OutputBufferRange"]
+        inbuffer_ranges = interface_manager[iocode]["InputBufferRange"]
+        outbuffer_ranges = interface_manager[iocode]["OutputBufferRange"]
 
         inlength = 0
         outlength = 0xffffffff
@@ -63,11 +70,11 @@ class Program:
         for rg in outbuffer_ranges:
             outlength = min(outlength, rg.start)
 
-        inlength = inlength if inlength <= Program.MAX_PAYLOAD_LEN else Program.MAX_PAYLOAD_LEN
+        inlength = inlength if inlength <= MAX_PAYLOAD_LEN else MAX_PAYLOAD_LEN
         return IRP(iocode, inlength, outlength)
 
     def generate(self):
-        for iocode in self.interface.keys():
+        for iocode in interface_manager.get_all_code():
             self.irps.append(self.__generateIRP(iocode))
     
     def mutate(self, corpus_programs):
@@ -100,7 +107,7 @@ class Program:
         
         p0 = random.choice(corpus_programs)
         idx = rand.Intn(len(self.irps))
-        self.irps = self.irps[:idx] + copy.deepcopy(p0.irps[:Program.MAX_IRP_COUNT - idx])
+        self.irps = self.irps[:idx] + copy.deepcopy(p0.irps[:MAX_IRP_COUNT - idx])
         return True
 
     def __insertIRP(self, corpus_programs):
@@ -108,11 +115,11 @@ class Program:
         This function inserts a IRP at a randomly chosen point.
         A IRP which is inserted can be both new and old one.
         """
-        if len(self.irps) >= Program.MAX_IRP_COUNT:
+        if len(self.irps) >= MAX_IRP_COUNT:
             return False
         
         if rand.oneOf(2):   # generate a new irp.
-            irp = self.__generateIRP(random.choice(list(self.interface.keys())))
+            irp = self.__generateIRP(random.choice(list(interface_manager.get_all_code())))
         else:               # fetch a irp from other programs
             program = random.choice(corpus_programs)
             irp = copy.deepcopy(random.choice(program.irps))
@@ -195,7 +202,7 @@ class Program:
 
         pos = rand.Intn(len(buffer) - width + 1)
         byts = buffer[pos:pos+width]
-        delta = rand.Intn(2*Program.maxDelta + 1) - Program.maxDelta
+        delta = rand.Intn(2*MAX_DELTA + 1) - MAX_DELTA
         if delta == 0:
             delta = 1
 
@@ -213,8 +220,8 @@ class Program:
             
     def __insertBytes(self, buffer):
         n = rand.Intn(16) + 1
-        if len(buffer) + n > Program.MAX_PAYLOAD_LEN:
-            n = Program.MAX_PAYLOAD_LEN - len(buffer)
+        if len(buffer) + n > MAX_PAYLOAD_LEN:
+            n = MAX_PAYLOAD_LEN - len(buffer)
             if n == 0:
                 return False
         

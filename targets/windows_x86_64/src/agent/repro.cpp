@@ -26,18 +26,6 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 
 HANDLE kafl_vuln_handle;
 
-void harness() {
-	DeviceIoControl(kafl_vuln_handle,
-					0xC350214c,
-					(LPVOID)"MSI.",
-					4,
-					NULL,
-					0,
-					NULL,
-					NULL
-				);
-}
-
 int main(int argc, char** argv){
     hprintf("[+] Starting... %s", argv[0]);
 
@@ -62,7 +50,6 @@ int main(int argc, char** argv){
 	kafl_vuln_handle = open_driver();
 	if (!kafl_vuln_handle)
 		return 0;
-	harness();
 
 	if (!set_ip0_filter()) {
 		hprintf("[+] Fail to set ip0 filter.");
@@ -79,7 +66,6 @@ int main(int argc, char** argv){
 				kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
 				
 				/* kernel fuzzing */
-				hprintf("%x %16s", payload_buffer->IoControlCode, &payload_buffer->InputBuffer);
 				DeviceIoControl(kafl_vuln_handle,
 					payload_buffer->IoControlCode,
 					&payload_buffer->InputBuffer,
@@ -111,7 +97,6 @@ int main(int argc, char** argv){
 			kafl_vuln_handle = open_driver();
 			if (!kafl_vuln_handle)
 				return 0;
-			harness();
 
 			if (!set_ip0_filter()) {
 				hprintf("[+] Fail to set ip0 filter.");
