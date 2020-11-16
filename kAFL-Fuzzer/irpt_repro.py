@@ -29,7 +29,7 @@ def main():
         return
 
     i = 0
-    program_data = read_binary_file(IRPT_ROOT + "/../out/corpus/timeout/payload_00014")
+    program_data = read_binary_file(IRPT_ROOT + "/../out/corpus/timeout/payload_00000")
     while i < len(program_data):
         iocode = u32(program_data[i:i+4])
         inlength = u32(program_data[i+4:i+8])

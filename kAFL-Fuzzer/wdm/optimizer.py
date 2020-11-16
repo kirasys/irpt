@@ -18,6 +18,8 @@ class Optimizer:
         exec_res = None
         for irp in program.irps:
             exec_res = self.q.send_irp(irp)
+            if exec_res.is_crash():
+                return None
 
         return exec_res.apply_lut()
 
@@ -32,6 +34,8 @@ class Optimizer:
             # quick validation for funky case.
             old_array = old_res.copy_to_array()
             new_res = self.__execute(program, reload=True)
+            if not new_res:
+                continue
             new_array = new_res.copy_to_array()
             if new_array != old_array:
                 continue

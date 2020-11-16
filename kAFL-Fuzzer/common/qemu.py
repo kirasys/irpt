@@ -615,7 +615,7 @@ class qemu:
 
         repeat = False
         value = self.check_recv(timeout_detection=timeout_detection)
-        #print(value)
+        
         if value == 0:
             pass # all good
         elif value == 1:

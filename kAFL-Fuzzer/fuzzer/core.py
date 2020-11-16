@@ -65,6 +65,9 @@ def start(config):
         print_fail("Error when importing seeds. Exit.")
         return 1
 
+    # Copy a driver file to agent.
+    
+
     # Load WDM Interface information.
     interface_manager.load(config.argument_values['wdm'])
 

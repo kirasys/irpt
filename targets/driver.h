@@ -1,3 +1,4 @@
+
 LPCSTR SVCNAME = "toy";
 LPCSTR DRIVERNAME = "toy_driver.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\toy_driver.sys";
@@ -14,6 +15,12 @@ LPCSTR SVCNAME = "NTIOLib_X64";
 LPCSTR DRIVERNAME = "NTIOLib_X64.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\NTIOLib_X64.sys";
 LPCSTR DRIVER_SVCPATH = "\\\\.\\NTIOLib_MysticLight";
+*/
+/*
+LPCSTR SVCNAME = "sparkio";
+LPCSTR DRIVERNAME = "SparkIO.sys";
+LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\SparkIO.sys";
+LPCSTR DRIVER_SVCPATH = "\\\\.\\SparkIO";
 */
 #include <psapi.h>
 #include <winternl.h>

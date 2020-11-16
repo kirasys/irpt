@@ -73,7 +73,7 @@ class IRPT:
 
         # restart Qemu on crash
         if exec_res.is_crash():
-            print("Crashed maybe?")
+            print("Crashed maybe? (%x)" % irp.IoControlCode)
             self.q.reload()
             self.crasher.add(self.cur_program.clone_with_irps(self.cur_program.irps[:index+1]))
             return True
@@ -97,7 +97,9 @@ class IRPT:
         for index in range(len(irps)):
             self.q.revert_driver()
             for j in range(index):
-                self.q.send_irp(irps[j])
+                exec_res = self.q.send_irp(irps[j])
+                if exec_res.is_crash():
+                    return
 
             # deterministic logic
             # Walking bitfilps
