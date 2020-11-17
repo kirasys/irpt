@@ -79,7 +79,7 @@ int main(int argc, char** argv){
 				kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
 				
 				/* kernel fuzzing */
-				hprintf("%x %16s", payload_buffer->IoControlCode, &payload_buffer->InputBuffer);
+				//hprintf("%x %16s", payload_buffer->IoControlCode, &payload_buffer->InputBuffer);
 				DeviceIoControl(kafl_vuln_handle,
 					payload_buffer->IoControlCode,
 					&payload_buffer->InputBuffer,

@@ -1,9 +1,9 @@
-
+/*
 LPCSTR SVCNAME = "toy";
 LPCSTR DRIVERNAME = "toy_driver.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\toy_driver.sys";
 LPCSTR DRIVER_SVCPATH = "\\\\.\\toy";
-
+*/
 /*
 LPCSTR SVCNAME = "medcored";
 LPCSTR DRIVERNAME = "medcored.sys";
@@ -22,6 +22,12 @@ LPCSTR DRIVERNAME = "SparkIO.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\SparkIO.sys";
 LPCSTR DRIVER_SVCPATH = "\\\\.\\SparkIO";
 */
+
+LPCSTR SVCNAME = "iobit_monitor_server";
+LPCSTR DRIVERNAME = "Monitor_win10_x64.sys";
+LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\Monitor_win10_x64.sys";
+LPCSTR DRIVER_SVCPATH = "\\\\.\\IOBIT_WinRing0_1_3_0";
+
 #include <psapi.h>
 #include <winternl.h>
 #define ARRAY_SIZE 1024

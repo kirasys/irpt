@@ -29,12 +29,13 @@ def main():
         return
 
     i = 0
-    program_data = read_binary_file(IRPT_ROOT + "/../out/corpus/timeout/payload_00000")
+    program_data = read_binary_file("/home/kirasys/monitor_timeout/payload_00000")
     while i < len(program_data):
         iocode = u32(program_data[i:i+4])
         inlength = u32(program_data[i+4:i+8])
         outlength = u32(program_data[i+8:i+12])
         inputbuffer = str(program_data[i+12:i+12+inlength])
+        print("IoControlCode(%x) InputBufferLength(%d)" % (iocode, inlength))
         exec_res = q.send_irp(IRP(iocode, inlength, outlength, inputbuffer))
         if exec_res.is_crash():
             print("Crashed!!")

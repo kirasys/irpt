@@ -99,20 +99,9 @@ build_qemu()
 
 	check_gitconfig
 
-	if [ -d "qemu-${QEMU_VERSION}" ]; then
-		echo "[*] Folder exists, skipping download + patching..."
-		pushd "qemu-${QEMU_VERSION}"
-	else
-		checked_download "qemu-${QEMU_VERSION}.tar.xz" "$QEMU_URL"
-		tar xf "qemu-${QEMU_VERSION}.tar.xz" || exit
-		pushd "qemu-${QEMU_VERSION}"
-		git init
-		git add .
-		git commit -m "vanilla qemu-${QEMU_VERSION}"
-
-		echo "[*] Applying QEMU patches ..."
-		git am ../patches/qemu/v${QEMU_VERSION}/00*.patch
-	fi
+	
+	git clone https://github.com/kirasys/qemu-pt qemu-5.0.0
+	pushd "qemu-${QEMU_VERSION}"
 
 	echo "[*] Building ..."
 	echo "-------------------------------------------------"
@@ -136,20 +125,8 @@ build_linux()
 
 	check_gitconfig
 
-	if [ -d linux-${LINUX_VERSION} ]; then
-		echo "[*] Folder exists, assume it is already patched.."
-		pushd "linux-${LINUX_VERSION}"
-	else
-		checked_download "linux-${LINUX_VERSION}.tar.xz" "$LINUX_URL"
-		tar xf "linux-${LINUX_VERSION}.tar.xz" || exit
-		pushd "linux-${LINUX_VERSION}" || exit
-		git init
-		git add .
-		git commit -m "vanilla linux-${LINUX_VERSION}"
-		echo "[*] Applying Linux patches ..."
-		BASE_VERSION=$(echo $LINUX_VERSION|sed "s/\.[0-9]*$//")
-		git am ../patches/kvm/v${BASE_VERSION}/*.patch
-	fi
+	git clone https://github.com/kirasys/kvm-pt linux-5.8.12
+	pushd "linux-${LINUX_VERSION}"
 
 	echo "[*] Building ..."
 	echo "-------------------------------------------------"
