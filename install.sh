@@ -99,13 +99,16 @@ build_qemu()
 
 	check_gitconfig
 
-	
-	git clone https://github.com/kirasys/qemu-pt qemu-5.0.0
-	pushd "qemu-${QEMU_VERSION}"
+	if [ -d qemu-${QEMU_VERSION} ]; then
+		pushd "qemu-${QEMU_VERSION}"
+	else
+		git clone https://github.com/kirasys/qemu-pt qemu-5.0.0
+		pushd "qemu-${QEMU_VERSION}"
+	fi
 
 	echo "[*] Building ..."
 	echo "-------------------------------------------------"
-	./configure --target-list=i386-softmmu,x86_64-softmmu --enable-vnc --enable-gtk --enable-pt --enable-redqueen --disable-werror
+	./configure --target-list=i386-softmmu,x86_64-softmmu --enable-vnc --enable-gtk --enable-pt --disable-werror
 	make -j $jobs
 	echo
 	echo "-------------------------------------------------"
@@ -125,8 +128,12 @@ build_linux()
 
 	check_gitconfig
 
-	git clone https://github.com/kirasys/kvm-pt linux-5.8.12
-	pushd "linux-${LINUX_VERSION}"
+	if [ -d linux-${LINUX_VERSION} ]; then
+		pushd "linux-${LINUX_VERSION}"
+	else
+		git clone https://github.com/kirasys/kvm-pt linux-5.8.12
+		pushd "linux-${LINUX_VERSION}"
+	fi
 
 	echo "[*] Building ..."
 	echo "-------------------------------------------------"
