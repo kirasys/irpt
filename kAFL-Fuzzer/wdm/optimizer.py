@@ -54,7 +54,9 @@ class Optimizer:
             while i < len(program.irps) and len(program.irps) > 1:
                 test_program = program.clone_with_irps(program.irps[:i] + program.irps[i+1:])
                 exec_res = self.__execute(test_program, reload=False)
-
+                if not exec_res:
+                    continue
+                
                 valid = False
                 for index in new_bytes.keys():
                     if exec_res.cbuffer[index] != new_bytes[index]:

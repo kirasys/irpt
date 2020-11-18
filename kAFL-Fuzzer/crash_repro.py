@@ -22,6 +22,7 @@ IRPT_CONFIG = IRPT_ROOT + "irpt.ini"
 
 
 def main():
+    payload = read_binary_file(IRPT_ROOT + "/../out/corpus/timeout/payload_00000")
     cfg = FuzzerConfiguration(IRPT_CONFIG)
     q = qemu(0, cfg, debug_mode=0)
 
@@ -29,22 +30,24 @@ def main():
         return
 
     i = 0
-    program_data = read_binary_file(IRPT_ROOT + "/../out/corpus/timeout/payload_00000")
-    while i < len(program_data):
-        iocode = u32(program_data[i:i+4])
-        inlength = u32(program_data[i+4:i+8])
-        outlength = u32(program_data[i+8:i+12])
-        inputbuffer = str(program_data[i+12:i+12+inlength])
+    while i < len(payload):
+        iocode = u32(payload[i:i+4])
+        inlength = u32(payload[i+4:i+8])
+        outlength = u32(payload[i+8:i+12])
+        inputbuffer = str(payload[i+12:i+12+inlength])
         print("IoControlCode(%x) InputBufferLength(%d)" % (iocode, inlength))
+
         exec_res = q.send_irp(IRP(iocode, inlength, outlength, inputbuffer))
         if exec_res.is_crash():
             print("Crashed!!")
             q.shutdown()
             return
-        i = i+12+inlength
+
+        i = i + 12 + inlength
 
     q.send_irp(IRP(0, 0, 0))
     input("wait")
     q.shutdown()
+    
 if __name__ == "__main__":
     main()
