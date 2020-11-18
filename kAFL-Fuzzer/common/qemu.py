@@ -473,8 +473,10 @@ class qemu:
             if res == qemu_protocol.LOCK:
                 break
             self.__debug_send(qemu_protocol.RELEASE)
+
         self.__debug_recv_expect(qemu_protocol.RELEASE)
         self.__debug_recv()
+
         log_qemu("Handshake done [INIT]", self.qemu_id)
 
     def __qemu_connect(self):

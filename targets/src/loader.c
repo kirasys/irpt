@@ -143,9 +143,6 @@ static inline DWORD create_program(char* buf, LPCSTR path){
 static inline void load_programs(char* buf){
     // Create a target driver.
     DWORD driver_size = create_program(buf, DRIVERPATH);
-    // Register the driver.
-    create_service();
-    load_driver();
 
     // Run an target agent.
     create_program(buf + driver_size + sizeof(DWORD), AGENTPATH);

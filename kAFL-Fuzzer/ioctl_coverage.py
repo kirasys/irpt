@@ -13,13 +13,12 @@ import os
 import sys
 
 from wdm.irp import IRP
+from wdm.interface import interface_manager
 from common.config import FuzzerConfiguration
 from common.qemu import qemu
 
 IRPT_ROOT = os.path.dirname(os.path.realpath(__file__)) + "/"
 IRPT_CONFIG = IRPT_ROOT + "irpt.ini"
-
-IOCTL_CODE_LIST = [0x222003, 0x222013, 0x222023]
 
 def main():
     cfg = FuzzerConfiguration(IRPT_CONFIG)
@@ -27,15 +26,18 @@ def main():
 
     if not q.start():
         return
+    
+    interface_manager.load(cfg.argument_values['interface'])
+    iocode_list = list(interface_manager.get_all_code())
 
-    exec_res = q.send_irp(IRP(IOCTL_CODE_LIST[0], 0, 0))
-    for iocode in IOCTL_CODE_LIST[1:]:
+    exec_res = q.send_irp(IRP(iocode_list[0], 0, 0))
+    for iocode in iocode_list[1:]:
         q.reload_driver()
         exec_res2 = q.send_irp(IRP(iocode, 0, 0))
         if exec_res.copy_to_array() != exec_res2.copy_to_array():
-            print("IoControlCode(%x) == IoControlCode(%x)" % (IOCTL_CODE_LIST[0], iocode))
+            print("IoControlCode(%x) == IoControlCode(%x)" % (iocode_list[0], iocode))
         else:
-            print("IoControlCode(%x) != IoControlCode(%x)" % (IOCTL_CODE_LIST[0], iocode))
+            print("IoControlCode(%x) != IoControlCode(%x)" % (iocode_list[0], iocode))
     
     q.shutdown()
 if __name__ == "__main__":

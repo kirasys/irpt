@@ -1,7 +1,10 @@
 #include <psapi.h>
 #include <winternl.h>
 
-#include "driver_list.h"
+LPCSTR SVCNAME = "target_driver";
+LPCSTR DRIVERNAME = "target_driver.sys";
+LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\target_driver.sys";
+LPCSTR DRIVER_SVCPATH = "\\\\.\\toy";
 
 #define ARRAY_SIZE 1024
 

@@ -22,7 +22,7 @@ from fuzzer.technique import bitflip, arithmetic, interesting_values
 
 u32 = lambda x : struct.unpack('<I', x)[0]
 
-class IRPT:
+class Process:
 
     def __init__(self, config, pid=0):
         self.config = config

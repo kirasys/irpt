@@ -49,9 +49,13 @@ int main(int argc, char** argv){
     hprintf("[+] Submitting current CR3 value to hypervisor...");
     kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_CR3, 0);
 
+	// Register the driver.
+    create_service();
+    load_driver();
+
 	kafl_vuln_handle = open_driver();
 	if (!kafl_vuln_handle)
-		return 0;
+		kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 	harness();
 
 	if (!set_ip0_filter()) {
@@ -89,23 +93,23 @@ int main(int argc, char** argv){
 		uint32_t cmd = payload_buffer->IoControlCode;
 		switch (cmd) {
         case AGENT_EXIT:
-            return 0;
+            kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 		case DRIVER_REVERT:
 			kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, 0, 0);
 			break;
 		case DRIVER_RELOAD:
 			CloseHandle(kafl_vuln_handle);
 			if (!unload_driver() || !load_driver())
-				return 0;
+				kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 			
 			kafl_vuln_handle = open_driver();
 			if (!kafl_vuln_handle)
-				return 0;
+				kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 			harness();
 
 			if (!set_ip0_filter()) {
 				hprintf("[+] Fail to set ip0 filter.");
-				return 0;
+				kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 			}
 			break;
 		}

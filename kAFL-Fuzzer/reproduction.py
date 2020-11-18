@@ -20,10 +20,9 @@ from common.util import u32, read_binary_file
 IRPT_ROOT = os.path.dirname(os.path.realpath(__file__)) + "/"
 IRPT_CONFIG = IRPT_ROOT + "irpt.ini"
 
-
 def main():
-    payload = read_binary_file(IRPT_ROOT + "/../out/corpus/timeout/payload_00000")
     cfg = FuzzerConfiguration(IRPT_CONFIG)
+    payload = read_binary_file(cfg.argument_values['payload'])
     q = qemu(0, cfg, debug_mode=0)
 
     if not q.start():
@@ -44,9 +43,6 @@ def main():
             return
 
         i = i + 12 + inlength
-
-    q.send_irp(IRP(0, 0, 0))
-    input("wait")
     q.shutdown()
     
 if __name__ == "__main__":
