@@ -11,7 +11,7 @@ from fuzzer.technique.helper import *
 from binascii import hexlify
 
 def mutate_seq_8_bit_interesting(index, self):
-    data = self.cur_program.irps[index].InputBuffer
+    data = self.cur_program.irps[index].InBuffer
 
     for i in range(0, len(data)):
         orig = data[i]
@@ -28,7 +28,7 @@ def mutate_seq_8_bit_interesting(index, self):
 
 
 def mutate_seq_16_bit_interesting(index, self):
-    data = self.cur_program.irps[index].InputBuffer
+    data = self.cur_program.irps[index].InBuffer
 
     for i in range(len(data) - 1):
         orig = data[i:i+2]
@@ -57,7 +57,7 @@ def mutate_seq_16_bit_interesting(index, self):
 
 
 def mutate_seq_32_bit_interesting(index, self):
-    data = self.cur_program.irps[index].InputBuffer
+    data = self.cur_program.irps[index].InBuffer
 
     for i in range(len(data) - 3):
         orig = data[i:i+4]

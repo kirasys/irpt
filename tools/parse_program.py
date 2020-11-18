@@ -13,12 +13,12 @@ def main():
         iocode = u32(program_data[i:i+4])
         inlength = u32(program_data[i+4:i+8])
         outlength = u32(program_data[i+8:i+12])
-        inputbuffer = str(program_data[i+12:i+12+inlength])
+        inbuffer = str(program_data[i+12:i+12+inlength])
         
         print('IoControlCode :', hex(iocode))
-        print("InputBufferLength :", hex(inlength))
-        print("OutputBufferLength :", hex(outlength))
-        print("InputBuffer : ", inputbuffer)
+        print("InBufferLength :", hex(inlength))
+        print("OutBufferLength :", hex(outlength))
+        print("InBuffer : ", inbuffer)
         print()
         i = i+12+inlength
     

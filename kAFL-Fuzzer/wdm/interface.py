@@ -15,10 +15,10 @@ class Interface:
         interface_json = json.loads(open(path, 'r').read())
         for constraint in interface_json:
             iocode = int(constraint["IoControlCode"], 16)
-            inbuffer_ranges = list(map(to_range, constraint["InputBufferLength"]))
-            outbuffer_ranges = list(map(to_range, constraint["OutputBufferLength"]))
+            inbuffer_ranges = list(map(to_range, constraint["InBufferLength"]))
+            outbuffer_ranges = list(map(to_range, constraint["OutBufferLength"]))
 
-            self.interface[iocode] = {"InputBufferRange": inbuffer_ranges, "OutputBufferRange": outbuffer_ranges, "exec_count": 0}
+            self.interface[iocode] = {"InBufferRange": inbuffer_ranges, "OutBufferRange": outbuffer_ranges, "exec_count": 0}
         
     def get_all_code(self):
         return self.interface.keys()

@@ -701,9 +701,9 @@ class qemu:
         try:
             self.fs_shm.seek(0)
             self.fs_shm.write(p32(irp.IoControlCode))
-            self.fs_shm.write(p32(irp.InputBufferLength))
-            self.fs_shm.write(p32(irp.OutputBufferLength))
-            self.fs_shm.write(bytes(irp.InputBuffer))
+            self.fs_shm.write(p32(irp.InBufferLength))
+            self.fs_shm.write(p32(irp.OutBufferLength))
+            self.fs_shm.write(bytes(irp.InBuffer))
             self.fs_shm.flush()
         except ValueError:
             if self.exiting:
@@ -715,7 +715,7 @@ class qemu:
 
     def send_irp(self, irp, retry=0):
         try:
-            print(hex(irp.IoControlCode), hex(irp.InputBufferLength), bytes(irp.InputBuffer[:0x10]))
+            print(hex(irp.IoControlCode), hex(irp.InBufferLength), bytes(irp.InBuffer[:0x10]))
             #sys.stdout.write("\033[F")
             self.set_payload(irp)
             return self.send_payload()

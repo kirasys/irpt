@@ -65,9 +65,9 @@
 
 typedef struct{
 	uint32_t IoControlCode;
-	uint32_t InputBufferLength;
-	uint32_t OutputBufferLength;
-	uint8_t InputBuffer[PAYLOAD_SIZE];
+	uint32_t InBufferLength;
+	uint32_t OutBufferLength;
+	uint8_t InBuffer[PAYLOAD_SIZE];
 } kAFL_payload;
 
 typedef struct{

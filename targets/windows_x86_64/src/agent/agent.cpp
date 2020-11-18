@@ -30,6 +30,8 @@ void harness() {
 	return;
 }
 
+char OutBuffer[0x10000];
+
 int main(int argc, char** argv){
     hprintf("[+] Starting... %s", argv[0]);
 
@@ -67,11 +69,11 @@ int main(int argc, char** argv){
 				kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
 				
 				/* kernel fuzzing */
-				//hprintf("%x %16s", payload_buffer->IoControlCode, &payload_buffer->InputBuffer);
+				//hprintf("%x %16s", payload_buffer->IoControlCode, &payload_buffer->InBuffer);
 				DeviceIoControl(kafl_vuln_handle,
 					payload_buffer->IoControlCode,
-					&payload_buffer->InputBuffer,
-					payload_buffer->InputBufferLength,
+					&payload_buffer->InBuffer,
+					payload_buffer->InBufferLength,
 					NULL,
 					0,
 					NULL,

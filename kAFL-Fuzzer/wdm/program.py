@@ -27,16 +27,16 @@ class Program:
         print("Exec count : %d " % self.exec_count)
         print("Complexity : %d " % self.complexity)
         for irp in self.irps:
-            print("IoControlCode %x InputBuffer %s" % (irp.IoControlCode, bytes(irp.InputBuffer[:0x20])))
+            print("IoControlCode %x InBuffer %s" % (irp.IoControlCode, bytes(irp.InBuffer[:0x20])))
         print("----------------------------------")
 
     def serialize(self):
         data = b''
         for irp in self.irps:
             data += p32(irp.IoControlCode)
-            data += p32(irp.InputBufferLength)
-            data += p32(irp.OutputBufferLength)
-            data += bytes(irp.InputBuffer)
+            data += p32(irp.InBufferLength)
+            data += p32(irp.OutBufferLength)
+            data += bytes(irp.InBuffer)
         return data
 
     def save_to_file(self, exit_reason='regular'):
@@ -55,15 +55,15 @@ class Program:
         return self.clone(irps=self.irps, bitmap=bitmap)
 
     def __satisfiable(self, irp, length):
-        inbuffer_ranges = interface_manager[irp.IoControlCode]["InputBufferRange"]
+        inbuffer_ranges = interface_manager[irp.IoControlCode]["InBufferRange"]
         for rg in inbuffer_ranges:
             if length not in rg:
                 return False
         return True
 
     def __generateIRP(self, iocode):
-        inbuffer_ranges = interface_manager[iocode]["InputBufferRange"]
-        outbuffer_ranges = interface_manager[iocode]["OutputBufferRange"]
+        inbuffer_ranges = interface_manager[iocode]["InBufferRange"]
+        outbuffer_ranges = interface_manager[iocode]["OutBufferRange"]
 
         inlength = 0
         outlength = 0xffffffff
@@ -159,24 +159,24 @@ class Program:
         return False
     
     def __mutateBuffer(self, irp):
-        if len(irp.InputBuffer) == 0: # Case of InputBufferLenght == 0
+        if len(irp.InBuffer) == 0: # Case of InBufferLenght == 0
             return True
 
         ok = False
         while not ok:
             if rand.nOutOf(7, 10):
-                ok = self.__flipBit(irp.InputBuffer)
+                ok = self.__flipBit(irp.InBuffer)
             elif rand.nOutOf(2, 10):
-                ok = self.__addsubBytes(irp.InputBuffer)
+                ok = self.__addsubBytes(irp.InBuffer)
             elif rand.nOutOf(1, 10):
-                ok = self.__replaceBytes(irp.InputBuffer)
-            else: # maybe change InputBufferLength
+                ok = self.__replaceBytes(irp.InBuffer)
+            else: # maybe change InBufferLength
                 if rand.nOutOf(1, 20):
-                    ok = self.__insertBytes(irp.InputBuffer)
+                    ok = self.__insertBytes(irp.InBuffer)
                 else:
-                    ok = self.__removeBytes(irp.InputBuffer)
+                    ok = self.__removeBytes(irp.InBuffer)
 
-                if not ok or self.__satisfiable(irp, len(irp.InputBuffer)):
+                if not ok or self.__satisfiable(irp, len(irp.InBuffer)):
                     continue
 
         return True

@@ -1,209 +1,209 @@
 [
     {
        "IoControlCode":"0xa3350404",
-       "InputBufferLength":[
+       "InBufferLength":[
           "16-16"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "16-16"
        ]
     },
     {
        "IoControlCode":"0xa3350408",
-       "InputBufferLength":[
+       "InBufferLength":[
           "16-16"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xa335040c",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xa3350418",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xa3350420",
-       "InputBufferLength":[
+       "InBufferLength":[
           "4-4"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xa3350008",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xa335000c",
-       "InputBufferLength":[
+       "InBufferLength":[
           "4-4"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xa3350000",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "808-808"
        ]
     },
     {
        "IoControlCode":"0xa3350028",
-       "InputBufferLength":[
+       "InBufferLength":[
           "8-8"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xa335001c",
-       "InputBufferLength":[
+       "InBufferLength":[
           "1-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xa335002c",
-       "InputBufferLength":[
+       "InBufferLength":[
           "20-20"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "1150-1150"
        ]
     },
     {
        "IoControlCode":"0xa3350034",
-       "InputBufferLength":[
+       "InBufferLength":[
           "1-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xa3350014",
-       "InputBufferLength":[
+       "InBufferLength":[
           "1-1023"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "1-inf"
        ]
     },
     {
        "IoControlCode":"0xa3350038",
-       "InputBufferLength":[
+       "InBufferLength":[
           "1-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xa3350004",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xacd2201c",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xacd22018",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xacd22004",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xacd22020",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xacd22014",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xacd22010",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     {
        "IoControlCode":"0xacd22008",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     },
     
     {
        "IoControlCode":"0xacd22024",
-       "InputBufferLength":[
+       "InBufferLength":[
           "0-inf"
        ],
-       "OutputBufferLength":[
+       "OutBufferLength":[
           "0-inf"
        ]
     }
