@@ -74,8 +74,8 @@ int main(int argc, char** argv){
 					payload_buffer->IoControlCode,
 					&payload_buffer->InBuffer,
 					payload_buffer->InBufferLength,
-					NULL,
-					0,
+					OutBuffer,
+					payload_buffer->OutBufferLength,
 					NULL,
 					NULL
 				);
