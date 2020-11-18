@@ -1,35 +1,9 @@
-/*
-LPCSTR SVCNAME = "toy";
-LPCSTR DRIVERNAME = "toy_driver.sys";
-LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\toy_driver.sys";
-LPCSTR DRIVER_SVCPATH = "\\\\.\\toy";
-*/
-/*
-LPCSTR SVCNAME = "medcored";
-LPCSTR DRIVERNAME = "medcored.sys";
-LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\medcored.sys";
-LPCSTR DRIVER_SVCPATH = "\\\\.\\medcored";
-*/
-/*
-LPCSTR SVCNAME = "NTIOLib_X64";
-LPCSTR DRIVERNAME = "NTIOLib_X64.sys";
-LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\NTIOLib_X64.sys";
-LPCSTR DRIVER_SVCPATH = "\\\\.\\NTIOLib_MysticLight";
-*/
-/*
-LPCSTR SVCNAME = "sparkio";
-LPCSTR DRIVERNAME = "SparkIO.sys";
-LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\SparkIO.sys";
-LPCSTR DRIVER_SVCPATH = "\\\\.\\SparkIO";
-*/
-
-LPCSTR SVCNAME = "iobit_monitor_server";
-LPCSTR DRIVERNAME = "Monitor_win10_x64.sys";
-LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\Monitor_win10_x64.sys";
-LPCSTR DRIVER_SVCPATH = "\\\\.\\IOBIT_WinRing0_1_3_0";
-
 #include <psapi.h>
 #include <winternl.h>
+
+#define TOY
+#include "driver_list.h"
+
 #define ARRAY_SIZE 1024
 #define MAX_INST_COUNT 5
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 cd ~/kAFL/
-python3 kAFL-Fuzzer/irpt_repro.py \
+python3 kAFL-Fuzzer/crash_repro.py \
 	-vm_ram snapshot_win/wram.qcow2 \
 	-vm_dir snapshot_win/ \
 	-agent targets/windows_x86_64/bin/agent/repro.exe \
