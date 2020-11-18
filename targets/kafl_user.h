@@ -58,6 +58,7 @@
 #define HPRINTF_MAX_SIZE					0x1000					/* up to 4KB hprintf strings */
 
 /* agent action */
+#define MAX_INST_COUNT		5
 #define AGENT_EXIT			0
 #define DRIVER_REVERT 		1
 #define DRIVER_RELOAD		2

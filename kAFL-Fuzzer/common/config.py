@@ -19,7 +19,7 @@ import six
 default_section = "Fuzzer"
 default_config = {"PAYLOAD_SHM_SIZE": 131072,
                   "BITMAP_SHM_SIZE": 65536,
-                  "AGENT_MAX_SIZE": 134217728,
+                  "AGENT_MAX_SIZE": 128 << 18,
                   "QEMU_KAFL_LOCATION": "",
                   "RADAMSA_LOCATION": "radamsa/bin/radamsa",
                   "TIMEOUT_TICK_FACTOR": 10.0,
@@ -168,6 +168,8 @@ def add_args_qemu(parser):
 
     parser.add_argument('-agent', metavar='<file>', required=False, action=FullPath,
                         type=parse_is_file, help='path to fuzzing agent to be loaded into the VM.')
+    parser.add_argument('-driver', metavar='<file>', required=False, action=FullPath,
+                        type=parse_is_file, help='path to fuzzing driver to be loaded into the VM.')
     parser.add_argument('-mem', metavar='<num>', help='size of virtual memory in MB (default: 256).',
                         default=256, type=int)
 

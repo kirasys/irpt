@@ -419,9 +419,11 @@ class qemu:
 
         return self.process.returncode
 
-    def __set_agent(self):
-        agent_bin = self.config.argument_values['agent']
-        bin = read_binary_file(agent_bin)
+    def __set_agent_and_driver(self):
+        driver_bin = read_binary_file(self.config.argument_values['driver'])
+        bin  = p32(len(driver_bin)) + driver_bin
+        agent_bin = read_binary_file(self.config.argument_values['agent'])
+        bin += p32(len(agent_bin)) + agent_bin
         assert (len(bin) <= self.agent_size)
         atomic_write(self.binary_filename, bin)
 
@@ -462,8 +464,8 @@ class qemu:
         return True
 
     def __qemu_handshake(self):
-        if self.config.argument_values['agent']:
-            self.__set_agent()
+        if self.config.argument_values['agent'] and self.config.argument_values['driver'] :
+            self.__set_agent_and_driver()
 
         self.__debug_send(qemu_protocol.RELEASE) # unlock
         while True:
@@ -714,7 +716,7 @@ class qemu:
     def send_irp(self, irp, retry=0):
         try:
             print(hex(irp.IoControlCode), hex(irp.InputBufferLength), bytes(irp.InputBuffer[:0x10]))
-            sys.stdout.write("\033[F")
+            #sys.stdout.write("\033[F")
             self.set_payload(irp)
             return self.send_payload()
         except (ValueError, BrokenPipeError):

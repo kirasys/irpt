@@ -1,3 +1,5 @@
+#define TOY
+
 #ifdef TOY
 LPCSTR SVCNAME = "toy";
 LPCSTR DRIVERNAME = "toy_driver.sys";

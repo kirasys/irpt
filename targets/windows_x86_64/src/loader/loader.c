@@ -23,7 +23,9 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include "kafl_user.h"
 
-char target_file[MAX_PATH] = { 0 };
+/* Driver and agent file */
+#include "driver.h"
+LPCSTR AGENTPATH = "C:\\Users\\kirasys\\Desktop\\agent.exe";
 
 /* get KeBugCheck */
 /* -------------- */
@@ -105,16 +107,12 @@ static inline void run_program(char* target){
         TerminateProcess((HANDLE)-1,0x41);
 }
 
-static inline void load_program(void* buf){
+static inline DWORD create_program(char* buf, LPCSTR path){
+    DWORD program_size = *(DWORD*)buf;
     HANDLE payload_file_handle = NULL;
     DWORD dwWritten;
 
-    memset(target_file, 0x00, MAX_PATH);   
-    DWORD tmp_path_len = GetTempPathA(MAX_PATH, target_file);
-    memcpy(target_file + tmp_path_len, "\x5c", 1);
-    memcpy(target_file + tmp_path_len + 1, TARGET_FILE_WIN, strlen(TARGET_FILE_WIN));
-
-    payload_file_handle = CreateFile((LPCSTR)target_file,
+    payload_file_handle = CreateFile(path,
         GENERIC_READ | GENERIC_WRITE,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
         NULL,
@@ -125,8 +123,8 @@ static inline void load_program(void* buf){
 
     BOOL result = WriteFile(
         payload_file_handle,
-        buf,
-        PROGRAM_SIZE,
+        (LPCVOID)(buf + 4),
+        program_size,
         &dwWritten,
         NULL
     );
@@ -136,9 +134,22 @@ static inline void load_program(void* buf){
         getchar();
     }
 
-    printf("[+] LOADER: Executing target: %s\n", target_file);
+    printf("[+] LOADER: Create target : %s\n", path);
     CloseHandle(payload_file_handle);
-    run_program(target_file);
+
+    return program_size;
+}
+
+static inline void load_programs(char* buf){
+    // Create a target driver.
+    DWORD driver_size = create_program(buf, DRIVERPATH);
+    // Register the driver.
+    create_service();
+    load_driver();
+
+    // Run an target agent.
+    create_program(buf + driver_size + sizeof(DWORD), AGENTPATH);
+    run_program((char*)AGENTPATH);
 }
 
 static inline UINT64 hex_to_bin(char* str){
@@ -180,7 +191,7 @@ int main(int argc, char** argv){
     /* submit virtual address of program buffer and wait for data (*blocking*) */
     kAFL_hypercall(HYPERCALL_KAFL_GET_PROGRAM, (UINT64)program_buffer);
     /* execute fuzzer program */
-    load_program(program_buffer);
+    load_programs((char*)program_buffer);
     /* bye */ 
     return 0;
 }

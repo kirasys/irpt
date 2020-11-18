@@ -27,15 +27,7 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 HANDLE kafl_vuln_handle;
 
 void harness() {
-	DeviceIoControl(kafl_vuln_handle,
-					0xC350214c,
-					(LPVOID)"MSI.",
-					4,
-					NULL,
-					0,
-					NULL,
-					NULL
-				);
+	return;
 }
 
 int main(int argc, char** argv){
@@ -55,10 +47,6 @@ int main(int argc, char** argv){
     hprintf("[+] Submitting current CR3 value to hypervisor...");
     kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_CR3, 0);
 
-    /* init driver and filter */
-	create_service();
-	load_driver();
-	
 	kafl_vuln_handle = open_driver();
 	if (!kafl_vuln_handle)
 		return 0;

@@ -1,19 +1,9 @@
 #include <psapi.h>
 #include <winternl.h>
 
-#define TOY
 #include "driver_list.h"
 
 #define ARRAY_SIZE 1024
-#define MAX_INST_COUNT 5
-
-PCSTR ntoskrnl = "C:\\Windows\\System32\\ntoskrnl.exe";
-PCSTR kernel_func = "PsCreateSystemThread";
-
-FARPROC KernGetProcAddress(HMODULE kern_base, LPCSTR function) {
-	HMODULE kernel_base_in_user_mode = LoadLibraryA(ntoskrnl);
-	return (FARPROC)((PUCHAR)GetProcAddress(kernel_base_in_user_mode, function) - (PUCHAR)kernel_base_in_user_mode + (PUCHAR)kern_base);
-}
 
 typedef struct _RTL_PROCESS_MODULE_INFORMATION
 {
