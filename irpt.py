@@ -27,19 +27,20 @@ BASIC_CMD += '-d '
 BASIC_CMD += '-v '
 BASIC_CMD += '--purge '
 BASIC_CMD += '-interface %s '
+BASIC_CMD += '-S %s '
 
 def ioctl_coverage_cmd(args):
-    cmd = BASIC_CMD % ('ioctl_coverage', args['driver'], args['interface'])
+    cmd = BASIC_CMD % ('ioctl_coverage', args['driver'], args['interface'], args['vm'])
     os.system(cmd)
 
 def reproduction_cmd(args):
-    cmd  = BASIC_CMD % ('reproduction', args['driver'], args['interface'])
+    cmd  = BASIC_CMD % ('reproduction', args['driver'], args['interface'], args['vm'])
     cmd += '-payload %s ' % args['payload']
     os.system(cmd)
     os.system('kill -9 `pgrep qemu`')
 
 def fuzz_cmd(args):
-    cmd = BASIC_CMD % ('kafl_fuzz', args['driver'], args['interface'])
+    cmd = BASIC_CMD % ('kafl_fuzz', args['driver'], args['interface'], args['vm'])
     os.system(cmd)
 
 def add_args_general(parser):
@@ -48,6 +49,7 @@ def add_args_general(parser):
     parser.add_argument('-device', required=True, help='Device name of target driver.')
     parser.add_argument('-interface', metavar='<file>', required=True, action=FullPath,
                         type=parse_is_file, help='path to payload to reproduce.', default=None)
+    parser.add_argument('-vm', required=False, help='Name of the snapshot (default: kafl)', default="kafl")
 
 def add_args_reprodunction(parser):
     parser.add_argument('-payload', metavar='<file>', required=False, action=FullPath,
