@@ -8,4 +8,7 @@ def nOutOf(n, outOf):
     return v <= n
 
 def Intn(n):
+    return random.randint(0, n)
+
+def Index(n):
     return random.randint(0, n-1)

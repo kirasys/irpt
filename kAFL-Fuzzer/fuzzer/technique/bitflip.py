@@ -6,6 +6,7 @@
 """
 AFL-style bitflip mutations (deterministic stage).
 """
+from common import rand
 
 def walking_bits_execs(data, skip_null=False, effector_map=None):
     execs=0
@@ -20,10 +21,18 @@ def walking_bits_execs(data, skip_null=False, effector_map=None):
 
     return execs
 
+MAX_WALKING_BITS_SIZE = 0x100
 
 def mutate_seq_walking_bits(index, self):
     data = self.cur_program.irps[index].InBuffer
-    for i in range(len(data) * 8):
+
+    # limit walking bits up to MAX_WALKING_BITS_SIZE.
+    start, end = 0, self.cur_program.irps[index].InBufferLength
+    if end > MAX_WALKING_BITS_SIZE:
+        start = rand.Intn(end - MAX_WALKING_BITS_SIZE)
+        end = start + MAX_WALKING_BITS_SIZE
+
+    for i in range(start, end * 8):
         data[i // 8] ^= (0x80 >> (i % 8))
         if self.execute_irp(index):
             return True
@@ -32,7 +41,14 @@ def mutate_seq_walking_bits(index, self):
 
 def mutate_seq_two_walking_bits(index, self):
     data = self.cur_program.irps[index].InBuffer
-    for i in range((len(data) * 8) - 1):
+
+    # limit walking bits up to MAX_WALKING_BITS_SIZE.
+    start, end = 0, self.cur_program.irps[index].InBufferLength
+    if end > MAX_WALKING_BITS_SIZE:
+        start = rand.Intn(end - MAX_WALKING_BITS_SIZE)
+        end = start + MAX_WALKING_BITS_SIZE
+
+    for i in range(start, end * 8 - 1):
         data[i // 8] ^= (0x80 >> (i % 8))
         data[(i + 1) // 8] ^= (0x80 >> ((i + 1) % 8))
         if self.execute_irp(index):
@@ -43,7 +59,12 @@ def mutate_seq_two_walking_bits(index, self):
 
 def mutate_seq_four_walking_bits(index, self):
     data = self.cur_program.irps[index].InBuffer
-    for i in range((len(data) * 8 - 3)):
+    start, end = 0, self.cur_program.irps[index].InBufferLength
+    if end > MAX_WALKING_BITS_SIZE:
+        start = rand.Intn(end - MAX_WALKING_BITS_SIZE)
+        end = start + MAX_WALKING_BITS_SIZE
+
+    for i in range(start, end*8 - 3):
         data[i // 8] ^= (0x80 >> (i % 8))
         data[(i + 1) // 8] ^= (0x80 >> ((i + 1) % 8))
         data[(i + 2) // 8] ^= (0x80 >> ((i + 2) % 8))

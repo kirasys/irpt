@@ -9,7 +9,7 @@ from wdm.irp import IRP
 from wdm.interface import interface_manager
 
 MAX_IRP_COUNT = 1000
-MAX_PAYLOAD_LEN = 0x200
+MAX_PAYLOAD_LEN = 0x1000
 MAX_DELTA = 35
 
 class Program:
@@ -108,7 +108,7 @@ class Program:
             return False
         
         p0 = random.choice(corpus_programs)
-        idx = rand.Intn(len(self.irps))
+        idx = rand.Index(len(self.irps))
         self.irps = self.irps[:idx] + copy.deepcopy(p0.irps[:MAX_IRP_COUNT - idx])
         return True
 
@@ -127,14 +127,14 @@ class Program:
             irp = copy.deepcopy(random.choice(program.irps))
 
         # TODO: biasd random??
-        self.irps.insert(rand.Intn(len(self.irps)), irp)
+        self.irps.insert(rand.Index(len(self.irps)), irp)
         return True
 
     def __swapIRP(self):
         """
 
         """
-        idx1, idx2 = rand.Intn(len(self.irps)), rand.Intn(len(self.irps))
+        idx1, idx2 = rand.Index(len(self.irps)), rand.Index(len(self.irps))
         if idx1 == idx2:
             return False
 
@@ -145,12 +145,12 @@ class Program:
         if len(self.irps) <= 1:
             return False
 
-        idx = rand.Intn(len(self.irps))
+        idx = rand.Index(len(self.irps))
         del self.irps[idx]
         return True
 
     def __mutateArg(self):
-        idx = rand.Intn(len(self.irps))
+        idx = rand.Index(len(self.irps))
 
         ok = False
         while not ok:
@@ -182,29 +182,29 @@ class Program:
         return True
     
     def __flipBit(self, buffer):
-        pos = rand.Intn(len(buffer))
-        bit = rand.Intn(8)
+        pos = rand.Index(len(buffer))
+        bit = rand.Index(8)
         buffer[pos] ^= 1 << bit
         return True
     
     def __replaceBytes(self, buffer):
-        width = 1 << rand.Intn(4)
+        width = 1 << rand.Index(4)
         if len(buffer) < width:
             return False
         
-        pos = rand.Intn(len(buffer) - width + 1)
+        pos = rand.Index(len(buffer) - width + 1)
         for i in range(width):
             buffer[pos + i] = rand.Intn(0xff)
         return True
 
     def __addsubBytes(self, buffer):
-        width = 1 << rand.Intn(4)
+        width = 1 << rand.Index(4)
         if len(buffer) < width:
             return False
 
-        pos = rand.Intn(len(buffer) - width + 1)
+        pos = rand.Index(len(buffer) - width + 1)
         byts = buffer[pos:pos+width]
-        delta = rand.Intn(2*MAX_DELTA + 1) - MAX_DELTA
+        delta = rand.Index(2*MAX_DELTA + 1) - MAX_DELTA
         if delta == 0:
             delta = 1
 
@@ -221,7 +221,7 @@ class Program:
         return True
             
     def __insertBytes(self, buffer):
-        n = rand.Intn(16) + 1
+        n = rand.Index(16) + 1
         if len(buffer) + n > MAX_PAYLOAD_LEN:
             n = MAX_PAYLOAD_LEN - len(buffer)
             if n == 0:
@@ -230,13 +230,13 @@ class Program:
         arr = []
         for _ in range(n):
             arr.append(rand.Intn(0xff))
-        pos = rand.Intn(len(buffer))
+        pos = rand.Index(len(buffer))
         buffer = buffer[:pos] + arr + buffer[pos:]
         return True
     
     def __removeBytes(self, buffer):
-        n = rand.Intn(16) + 1
-        pos = rand.Intn(len(buffer))
+        n = rand.Index(16) + 1
+        pos = rand.Index(len(buffer))
         buffer = buffer[:pos] + buffer[pos+n:]
         return True
     

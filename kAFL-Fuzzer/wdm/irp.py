@@ -6,9 +6,6 @@ class IRP:
         self.InBufferLength = inlength
         self.OutBufferLength = outlength
         if inbuffer == '':
-            buf = []
-            for _ in range(inlength):
-                buf.append(rand.Intn(0xff))
-            self.InBuffer = buf
+            self.InBuffer = [0x7f] * self.InBufferLength
         else:
             self.InBuffer = list(map(ord, inbuffer))

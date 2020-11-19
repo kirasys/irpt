@@ -4,7 +4,7 @@
 LPCSTR SVCNAME = "target_driver";
 LPCSTR DRIVERNAME = "target_driver.sys";
 LPCSTR DRIVERPATH = "C:\\Users\\kirasys\\Desktop\\target_driver.sys";
-LPCSTR DRIVER_SVCPATH = "\\\\.\\toy";
+LPCSTR DRIVER_SVCPATH = "\\\\.\\AscRegistryFilter";
 
 #define ARRAY_SIZE 1024
 

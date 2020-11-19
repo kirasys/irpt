@@ -34,8 +34,8 @@ def main():
         inlength = u32(payload[i+4:i+8])
         outlength = u32(payload[i+8:i+12])
         inbuffer = str(payload[i+12:i+12+inlength])
-        print("IoControlCode(%x) InBufferLength(%d)" % (iocode, inlength))
-
+        print("[+] IoControlCode(%x) InBufferLength(%d)" % (iocode, inlength))
+        
         exec_res = q.send_irp(IRP(iocode, inlength, outlength, inbuffer))
         if exec_res.is_crash():
             print("Crashed!!")

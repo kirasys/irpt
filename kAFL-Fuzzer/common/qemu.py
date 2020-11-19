@@ -555,9 +555,7 @@ class qemu:
             ready = select.select([self.control], [], [], 5.0)
             if not ready[0]:
                 return 2
-
         result = self.__debug_recv()
-        #print(result)
 
         if result == qemu_protocol.CRASH:
             return 1
@@ -734,7 +732,10 @@ class qemu:
         return self.send_irp(irp, retry=retry+1)
     
     def revert_driver(self):
-        self.send_irp(IRP(qemu_protocol.DRIVER_REVERT, 0, 0))
+        try:
+            self.send_irp(IRP(qemu_protocol.DRIVER_REVERT, 0, 0))
+        except ConnectionResetError:
+            sys.exit()
     
     def reload_driver(self):
         self.send_irp(IRP(qemu_protocol.DRIVER_RELOAD, 0, 0))

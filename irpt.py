@@ -36,6 +36,7 @@ def reproduction_cmd(args):
     cmd  = BASIC_CMD % ('reproduction', args['driver'], args['interface'])
     cmd += '-payload %s ' % args['payload']
     os.system(cmd)
+    os.system('kill -9 `pgrep qemu`')
 
 def fuzz_cmd(args):
     cmd = BASIC_CMD % ('kafl_fuzz', args['driver'], args['interface'])
@@ -44,7 +45,7 @@ def fuzz_cmd(args):
 def add_args_general(parser):
     parser.add_argument('-driver', metavar='<file>', required=True, action=FullPath,
                         type=parse_is_file, help='path to target driver.')
-    parser.add_argument('-device_name', required=True, help='Device name of target driver.')
+    parser.add_argument('-device', required=True, help='Device name of target driver.')
     parser.add_argument('-interface', metavar='<file>', required=True, action=FullPath,
                         type=parse_is_file, help='path to payload to reproduce.', default=None)
 
@@ -78,7 +79,7 @@ def main():
     with open('targets/include/driver.h.template', 'rt') as fin:
         with open('targets/include/driver.h', 'wt') as fout:
             for line in fin:
-                fout.write(line.replace('@@DEVICE_NAME@@', args['device_name']))
+                fout.write(line.replace('@@DEVICE_NAME@@', args['device']))
     os.system('x86_64-w64-mingw32-g++ targets/src/agent.cpp -I targets/include -o targets/bin/agent.exe -mwindows -lpsapi -lntdll -Wall')
 
     # Mode execution
