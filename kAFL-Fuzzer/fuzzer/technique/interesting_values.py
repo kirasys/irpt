@@ -8,12 +8,21 @@ AFL-style 'interesting values' mutations (deterministic stage).
 """
 
 from fuzzer.technique.helper import *
+from common import rand
 from binascii import hexlify
+
+MAX_INTERESTING_SIZE = 0x100
 
 def mutate_seq_8_bit_interesting(index, self):
     data = self.cur_program.irps[index].InBuffer
 
-    for i in range(0, len(data)):
+    # limit interesting up to MAX_INTERESTING_SIZE.
+    start, end = 0, self.cur_program.irps[index].InBufferLength
+    if end > MAX_INTERESTING_SIZE:
+        start = rand.Intn(((end - 1) // MAX_INTERESTING_SIZE)) * MAX_INTERESTING_SIZE
+        end = min(end, start + MAX_INTERESTING_SIZE)
+
+    for i in range(start, end):
         orig = data[i]
 
         for j in range(len(interesting_8_Bit)):
@@ -30,7 +39,13 @@ def mutate_seq_8_bit_interesting(index, self):
 def mutate_seq_16_bit_interesting(index, self):
     data = self.cur_program.irps[index].InBuffer
 
-    for i in range(len(data) - 1):
+    # limit interesting up to MAX_INTERESTING_SIZE.
+    start, end = 0, self.cur_program.irps[index].InBufferLength
+    if end > MAX_INTERESTING_SIZE:
+        start = rand.Intn(((end - 1) // MAX_INTERESTING_SIZE)) * MAX_INTERESTING_SIZE
+        end = min(end, start + MAX_INTERESTING_SIZE)
+
+    for i in range(end - 1):
         orig = data[i:i+2]
         oval = (orig[1] << 8) | orig[0]
 
@@ -59,7 +74,13 @@ def mutate_seq_16_bit_interesting(index, self):
 def mutate_seq_32_bit_interesting(index, self):
     data = self.cur_program.irps[index].InBuffer
 
-    for i in range(len(data) - 3):
+    # limit interesting up to MAX_INTERESTING_SIZE.
+    start, end = 0, self.cur_program.irps[index].InBufferLength
+    if end > MAX_INTERESTING_SIZE:
+        start = rand.Intn(((end - 1) // MAX_INTERESTING_SIZE)) * MAX_INTERESTING_SIZE
+        end = min(end, start + MAX_INTERESTING_SIZE)
+
+    for i in range(end - 3):
         orig = data[i:i+4]
         oval = (orig[3] << 24) | (orig[2] << 16) | (orig[1] << 8) | orig[0]
 

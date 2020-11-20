@@ -7,14 +7,22 @@
 Reimplementation of AFL-style arithmentic mutations (deterministic stage).
 """
 
-
 from fuzzer.technique.helper import *
+from common import rand
 from binascii import hexlify
+
+MAX_ARITHMETIC_SIZE = 0x100
 
 def mutate_seq_8_bit_arithmetic(index, self):
     data = self.cur_program.irps[index].InBuffer
     
-    for i in range(0, len(data)):
+    # limit arithmethic up to MAX_ARITHMETIC_SIZE.
+    start, end = 0, self.cur_program.irps[index].InBufferLength
+    if end > MAX_ARITHMETIC_SIZE:
+        start = rand.Intn(((end - 1) // MAX_ARITHMETIC_SIZE)) * MAX_ARITHMETIC_SIZE
+        end = min(end, start + MAX_ARITHMETIC_SIZE)
+
+    for i in range(start, end):
         orig = data[i]
 
         for j in range(1, AFL_ARITH_MAX + 1):
@@ -36,7 +44,13 @@ def mutate_seq_8_bit_arithmetic(index, self):
 def mutate_seq_16_bit_arithmetic(index, self):
     data = self.cur_program.irps[index].InBuffer
 
-    for i in range(0, len(data) - 1):
+    # limit arithmethic up to MAX_ARITHMETIC_SIZE.
+    start, end = 0, self.cur_program.irps[index].InBufferLength
+    if end > MAX_ARITHMETIC_SIZE:
+        start = rand.Intn(((end - 1) // MAX_ARITHMETIC_SIZE)) * MAX_ARITHMETIC_SIZE
+        end = min(end, start + MAX_ARITHMETIC_SIZE)
+
+    for i in range(start, end - 1):
         orig = data[i:i+2]
         num1 = (orig[0] << 8) | orig[1]
         num2 = (orig[1] << 8) | orig[0]
@@ -74,7 +88,13 @@ def mutate_seq_16_bit_arithmetic(index, self):
 def mutate_seq_32_bit_arithmetic(index, self):
     data = self.cur_program.irps[index].InBuffer
 
-    for i in range(0, len(data) - 3):
+    # limit arithmethic up to MAX_ARITHMETIC_SIZE.
+    start, end = 0, self.cur_program.irps[index].InBufferLength
+    if end > MAX_ARITHMETIC_SIZE:
+        start = rand.Intn(((end - 1) // MAX_ARITHMETIC_SIZE)) * MAX_ARITHMETIC_SIZE
+        end = min(end, start + MAX_ARITHMETIC_SIZE)
+
+    for i in range(start, end - 3):
         orig = data[i:i+4]
         num1 = (orig[3] << 24) | (orig[2] << 16) | (orig[1] << 8) | orig[0]
         num2 = (orig[0] << 24) | (orig[1] << 16) | (orig[2] << 8) | orig[3]
