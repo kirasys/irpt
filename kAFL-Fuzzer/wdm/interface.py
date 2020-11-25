@@ -22,5 +22,12 @@ class Interface:
         
     def get_all_code(self):
         return self.interface.keys()
+    
+    def satisfiable(self, irp):
+        inbuffer_ranges = self.interface[irp.IoControlCode]["InBufferRange"]
+        for rg in inbuffer_ranges:
+            if len(irp.InBuffer) not in rg:
+                return False
+        return True
 
 interface_manager = Interface()

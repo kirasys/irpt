@@ -54,13 +54,6 @@ class Program:
     def clone_with_bitmap(self, bitmap):
         return self.clone(irps=self.irps, bitmap=bitmap)
 
-    def __satisfiable(self, irp, length):
-        inbuffer_ranges = interface_manager[irp.IoControlCode]["InBufferRange"]
-        for rg in inbuffer_ranges:
-            if length not in rg:
-                return False
-        return True
-
     def __generateIRP(self, iocode):
         inbuffer_ranges = interface_manager[iocode]["InBufferRange"]
         outbuffer_ranges = interface_manager[iocode]["OutBufferRange"]
@@ -176,7 +169,7 @@ class Program:
                 else:
                     ok = self.__removeBytes(irp.InBuffer)
 
-                if not ok or self.__satisfiable(irp, len(irp.InBuffer)):
+                if not ok or interface_manager.satisfiable(irp):
                     continue
 
         return True
