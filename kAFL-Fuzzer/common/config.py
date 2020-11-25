@@ -158,7 +158,7 @@ def add_args_qemu(parser):
     parser.add_argument('-vm_ram', metavar='<file>', required=False, action=FullPath, type=parse_is_file,
                         help='path to a VM\'s RAM snapshot file. Use together with -vm_dir.')
     parser.add_argument('-S', required=False, metavar='<name>', help='name of VM snapshot to save/load (default: kafl).',
-                        default="kafl", type=str)
+                        default="irpt", type=str)
 
     xorarg.add_argument('-kernel', metavar='<file>', required=False, action=FullPath, type=parse_is_file,
                         help='path to the Kernel image.')

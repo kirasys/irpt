@@ -89,7 +89,7 @@ system_deps()
 	sudo apt-get install libcapstone-dev libcapstone3
 
 	echo "[*] Installing kAFL python dependencies ..."
-	pip3 install --user mmh3 lz4 psutil fastrand ipdb inotify msgpack toposort pygraphviz pgrep
+	pip3 install --user mmh3 lz4 psutil fastrand ipdb inotify msgpack toposort pygraphviz pgrep numpy
 }
 
 build_qemu()

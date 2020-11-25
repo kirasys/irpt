@@ -82,8 +82,7 @@ class qemu:
         self.cmd += " -serial file:" + self.qemu_serial_log + \
                     " -enable-kvm" \
                     " -m " + str(config.argument_values['mem']) + \
-                    " -net nic -cpu host" + \
-                    " -net user,hostfwd=tcp::2222-:22" + \
+                    " -net none " + \
                     " -chardev socket,server,nowait,path=" + self.control_filename + \
                     ",id=kafl_interface" \
                     " -device kafl,chardev=kafl_interface,bitmap_size=" + str(self.bitmap_size) + ",shm0=" + self.binary_filename + \

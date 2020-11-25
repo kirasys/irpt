@@ -14,7 +14,6 @@ mkdir out/
 ~/kAFL/qemu-5.0.0/x86_64-softmmu/qemu-system-x86_64 \
 	-hdb ~/kAFL/snapshot_win/wram.qcow2 \
 	-hda ~/kAFL/snapshot_win/overlay_0.qcow2 \
-	-machine q35 -cpu host -serial mon:stdio \
-	-net nic \
-	-net user,hostfwd=tcp::2222-:22 \
+	-machine q35 -serial mon:stdio \
+	-net none \
 	-enable-kvm -m 4096 \

@@ -2,7 +2,7 @@ import os
 import sys
 import argparse
 
-BASEDIR = os.path.expanduser('~') + '/kAFL'
+BASEDIR = os.path.dirname(os.path.abspath(__file__))
 
 class FullPath(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
@@ -49,7 +49,7 @@ def add_args_general(parser):
     parser.add_argument('-device', required=True, help='Device name of target driver.')
     parser.add_argument('-interface', metavar='<file>', required=True, action=FullPath,
                         type=parse_is_file, help='path to payload to reproduce.', default=None)
-    parser.add_argument('-vm', required=False, help='Name of the snapshot (default: kafl)', default="kafl")
+    parser.add_argument('-vm', required=False, help='Name of the snapshot (default: irpt)', default="irpt")
 
 def add_args_reprodunction(parser):
     parser.add_argument('-payload', metavar='<file>', required=False, action=FullPath,

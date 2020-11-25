@@ -25,7 +25,7 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 
 /* Driver and agent file */
 #include "driver.h"
-LPCSTR AGENTPATH = "C:\\Users\\kirasys\\Desktop\\agent.exe";
+LPCSTR AGENTPATH = "C:\\agent.exe";
 
 /* get KeBugCheck */
 /* -------------- */
@@ -162,7 +162,6 @@ int main(int argc, char** argv){
         printf("[+] Cannot add veh handler %u\n", (UINT32)GetLastError());
 		ExitProcess(0);
     }
-
 
     panic_handler1 = resolve_KeBugCheck(kernel_func1);
     panic_handler2 = resolve_KeBugCheck(kernel_func2);

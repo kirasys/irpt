@@ -9,7 +9,7 @@ from wdm.irp import IRP
 from wdm.interface import interface_manager
 
 MAX_IRP_COUNT = 1000
-MAX_PAYLOAD_LEN = 0x1000
+MAX_PAYLOAD_LEN = 0x400
 MAX_DELTA = 35
 
 class Program:

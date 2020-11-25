@@ -6,6 +6,7 @@ out
 repro_out
 snapshot_win
 targets/windows_x86_64/bin
+targets/include/driver.h
 drivers/*
 qemu-*
 linux-*
