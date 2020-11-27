@@ -3,19 +3,21 @@ import random
 
 from common import rand
 from common.config import FuzzerConfiguration
-from common.util import array2int, int2array, p32, atomic_write
+from common.util import array2int, int2array, p32, u32, atomic_write, read_binary_file
 
 from wdm.irp import IRP
 from wdm.interface import interface_manager
 
 MAX_IRP_COUNT = 1000
-MAX_PAYLOAD_LEN = 0x400
+MAX_PAYLOAD_LEN = 0x1000
 MAX_DELTA = 35
 
 class Program:
     NextID = 0
     
-    def __init__(self, irps=[], bitmap=None, complexity=0, exec_count=0):
+    def __init__(self, irps=None, bitmap=None, complexity=0, exec_count=0):
+        if irps is None:
+            irps = []
         self.irps = irps
         self.bitmap = bitmap
 
@@ -29,6 +31,17 @@ class Program:
         for irp in self.irps:
             print("IoControlCode %x InBuffer %s" % (irp.IoControlCode, bytes(irp.InBuffer[:0x20])))
         print("----------------------------------")
+
+    def load(self, f):
+        i = 0
+        program_data = read_binary_file(f)
+        while i < len(program_data):
+            iocode = u32(program_data[i:i+4])
+            inlength = u32(program_data[i+4:i+8])
+            outlength = u32(program_data[i+8:i+12])
+            inbuffer = str(program_data[i+12:i+12+inlength])
+            self.irps.append(IRP(iocode, inlength, outlength, inbuffer))
+            i = i + 12 + inlength
 
     def serialize(self):
         data = b''
@@ -75,9 +88,7 @@ class Program:
     def mutate(self, corpus_programs):
         ok = False
         while len(self.irps) != 0 and not ok:
-            if rand.oneOf(5):
-                ok = self.__squashAny()
-            elif rand.nOutOf(1, 300):
+            if rand.nOutOf(1, 300):
                 ok = self.__splice(corpus_programs)
             elif rand.nOutOf(1, 200):
                 ok = self.__insertIRP(corpus_programs)
@@ -88,9 +99,6 @@ class Program:
             
             if rand.nOutOf(9, 11):
                 ok = self.__mutateArg()
-
-    def __squashAny(self):
-        return False
 
     def __splice(self, corpus_programs):
         """

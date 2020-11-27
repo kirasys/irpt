@@ -94,6 +94,7 @@ int main(int argc, char** argv){
 		switch (cmd) {
         case AGENT_EXIT:
             kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
+			return 0;
 		case DRIVER_REVERT:
 			kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, 0, 0);
 			break;

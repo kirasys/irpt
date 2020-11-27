@@ -13,6 +13,7 @@ from common.util import print_warning, print_fail, print_note, p32
 from common.execution_result import ExecutionResult
 from common.qemu import qemu
 from wdm.irp import IRP
+from wdm.program import Program
 from wdm.optimizer import Optimizer
 from wdm.database import Database
 from wdm.crasher import Crasher
@@ -88,7 +89,7 @@ class Process:
 
         for i in range(len(self.cur_program.irps)):
             if self.execute_irp(i):
-                return
+                return True
 
     def execute_deterministic(self, program):
         self.__set_current_program(program)
@@ -138,20 +139,50 @@ class Process:
         if not self.q.start():
             return
 
-        program = self.database.get_next()
+        # Import seeds.
+        seed_directory = self.config.argument_values['seed_dir']
+        if len(os.listdir(seed_directory)):
+            for (directory, _, files) in os.walk(seed_directory):
+                for f in files:
+                    path = os.path.join(directory, f)
+                    print("Importing seed (%s)" % path)
+                    if os.path.exists(path):
+                        program = Program()
+                        program.load(path)
+                        # If a crash(timeout) occurs, retry execution.
+                        while True:
+                            if not self.execute(program):
+                                break
+                            self.crasher.clear()
+                            self.optimizer.clear()
+                        
+                        while self.optimizer.optimizable():
+                            new_programs = self.optimizer.optimize()
+                            if new_programs:
+                                log_process("[+] New interesting program found.")
+                                self.database.add(new_programs)
+        
+        # basic coverage program.
+        program = Program()
+        program.generate()
         self.execute(program)
-        self.optimizer.clear()   # Default code coverage.
+
+        while self.optimizer.optimizable():
+            new_programs = self.optimizer.optimize()
+            if new_programs:
+                log_process("[+] New interesting program found.")
+                self.database.add(new_programs)
 
         while True:
             program = self.database.get_next()
 
             for _ in range(10):
-                program_snapshot = copy.deepcopy(program)
-                program_snapshot.mutate(self.database.getAll())
+                programCopyed = copy.deepcopy(program)
+                programCopyed.mutate(self.database.getAll())
                 if rand.oneOf(10):
-                    self.execute_deterministic(program_snapshot)
+                    self.execute_deterministic(programCopyed)
                 else:    
-                    self.execute(program_snapshot)
+                    self.execute(programCopyed)
                 program.exec_count += 1
 
                 # Get a new interesting corpus
@@ -161,12 +192,12 @@ class Process:
                         log_process("[+] New interesting program found.")
                         self.database.add(new_programs)
                         
-                        # start deterministic execution.
+                        # Start deterministic execution.
                         for prog in new_programs:
                             self.execute_deterministic(prog)
                             prog.exec_count += 1
                 
-                # Crash reprodunction
+                # crash reproduction
                 self.crasher.reproduce()
                 
     def shutdown(self):

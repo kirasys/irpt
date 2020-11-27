@@ -714,7 +714,7 @@ class qemu:
 
     def send_irp(self, irp, retry=0):
         try:
-            print(hex(irp.IoControlCode), hex(irp.InBufferLength), bytes(irp.InBuffer[:0x10]))
+            #print(hex(irp.IoControlCode), hex(irp.InBufferLength), bytes(irp.InBuffer[:0x10]))
             #sys.stdout.write("\033[F")
             self.set_payload(irp)
             return self.send_payload()

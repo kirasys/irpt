@@ -9,7 +9,10 @@ class Optimizer:
     def add(self, program, exec_res, new_bytes, new_bits):
         self.exec_results.append([program, exec_res, new_bytes, new_bits])
     
-    def __execute(self, program, reload=False):
+    def __execute(self, program, reload=False, retry=0):
+        if retry > 3:
+            return None
+
         if reload:
             self.q.reload_driver()
         else:
@@ -19,8 +22,10 @@ class Optimizer:
         for irp in program.irps:
             exec_res = self.q.send_irp(irp)
             if exec_res.is_crash():
-                return None
-
+                print("crashed")
+                if not self.q.reload():
+                    self.q.reload()
+                return self.__execute(program, reload, retry + 1)
         return exec_res.apply_lut()
 
     def optimizable(self):
@@ -49,6 +54,7 @@ class Optimizer:
                 optimized.append(program)
                 continue
 
+            # dedulicate same coverage irp.
             i = 0
             exec_res = None
             while i < len(program.irps) and len(program.irps) > 1:

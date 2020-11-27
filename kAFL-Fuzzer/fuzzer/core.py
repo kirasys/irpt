@@ -52,7 +52,6 @@ def start(config):
         return -1
     
     work_dir   = config.argument_values["work_dir"]
-    seed_dir   = config.argument_values["seed_dir"]
     
     if config.argument_values['v'] or config.argument_values['debug']:
         enable_logging(work_dir)
@@ -60,13 +59,6 @@ def start(config):
     if not prepare_working_dir(config):
         print_fail("Refuse to operate on existing work directory. Use --purge to override.")
         return 1
-
-    if seed_dir and not copy_seed_files(work_dir, seed_dir):
-        print_fail("Error when importing seeds. Exit.")
-        return 1
-
-    # Copy a driver file to agent.
-    
 
     # Load WDM Interface information.
     interface_manager.load(config.argument_values['interface'])
