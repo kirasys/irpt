@@ -48,6 +48,7 @@
 /* kirasys */
 #define HYPERCALL_KAFL_LOCK					22
 #define HYPERCALL_KAFL_IP_FILTER			23
+#define HYPERCALL_KAFL_MEMWRITE				24
 
 #define PAYLOAD_SIZE						(128 << 6)				/* up to 8KB payloads */
 #define PROGRAM_SIZE						(128 << 20)				/* kAFL supports 128MB programm data */
@@ -113,17 +114,18 @@ static void kAFL_hypercall(uint64_t rbx, uint64_t rcx){
 # endif
 }
 
-static void kAFL_hypercallEx(uint64_t rbx, uint64_t rcx, uint64_t rdx){
+static void kAFL_hypercallEx(uint64_t rbx, uint64_t rcx, uint64_t rdx, uint64_t rsi){
 # ifndef __NOKAFL
 	uint64_t rax = HYPERCALL_KAFL_RAX_ID;
-    asm volatile("movq %0, %%rdx;"
-				 "movq %1, %%rcx;"
-				 "movq %2, %%rbx;"  
-				 "movq %3, %%rax;"
+    asm volatile("movq %0, %%rsi;"
+				 "movq %1, %%rdx;"
+				 "movq %2, %%rcx;"
+				 "movq %3, %%rbx;"  
+				 "movq %4, %%rax;"
 				 "vmcall" 
 				: 
-				: "r" (rdx), "r" (rcx), "r" (rbx), "r" (rax) 
-				: "rax", "rcx", "rbx", "rdx"
+				: "r" (rsi), "r" (rdx), "r" (rcx), "r" (rbx), "r" (rax) 
+				: "rax", "rcx", "rbx", "rdx", "rsi"
 				);
 # endif
 }

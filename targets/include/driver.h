@@ -4,7 +4,7 @@
 LPCSTR SVCNAME = "target_driver";
 LPCSTR DRIVERNAME = "target_driver.sys";
 LPCSTR DRIVERPATH = "C:\\target_driver.sys";
-LPCSTR DRIVER_SVCPATH = "\\\\.\\toy";
+LPCSTR DRIVER_SVCPATH = "\\\\.\\tmusa";
 
 #define ARRAY_SIZE 1024
 
@@ -28,6 +28,7 @@ typedef struct _RTL_PROCESS_MODULES
 	RTL_PROCESS_MODULE_INFORMATION Modules[1];
 } RTL_PROCESS_MODULES, * PRTL_PROCESS_MODULES;
 
+UINT64 module_base_address = 0;
 
 bool create_service() {
     bool success;
@@ -105,7 +106,7 @@ bool unload_driver() {
 	return success;
 }
 
-HANDLE open_driver() {
+HANDLE open_driver_device() {
 	HANDLE kafl_vuln_handle = INVALID_HANDLE_VALUE;
 	hprintf("[+] Attempting to open vulnerable device file (%s)", DRIVER_SVCPATH);
 	kafl_vuln_handle = CreateFile(DRIVER_SVCPATH,
@@ -149,12 +150,12 @@ bool set_ip0_filter() {
 			PCHAR driver_filename = (PCHAR)ModuleInfo->Modules[i].FullPathName + ModuleInfo->Modules[i].OffsetToFileName;
 			if (!strcmp(driver_filename, DRIVERNAME)) {
 				hprintf("[+] Set ip0 filter.");
-				kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, (UINT64)drivers[i], ((UINT64)drivers[i]) + ModuleInfo->Modules[i].ImageSize);
+				module_base_address = (UINT64)drivers[i];
+				kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, module_base_address, module_base_address + ModuleInfo->Modules[i].ImageSize, 0);
 				break;
 			}
 		}
 		VirtualFree(ModuleInfo, 0, MEM_RELEASE);
 	}
-
 	return true;
 }

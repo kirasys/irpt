@@ -23,10 +23,12 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include "kafl_user.h"
 #include "driver.h"
+#include "kernel.h"
 
 HANDLE kafl_vuln_handle;
 
 void harness() {
+	kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, module_base_address + 0x15210, (uint64_t)"\x00\x00\x00\x00\x00\x00\x00\x00", 8);
 	return;
 }
 
@@ -34,12 +36,26 @@ char OutBuffer[0x10000];
 
 int main(int argc, char** argv){
     hprintf("[+] Starting... %s", argv[0]);
+	/* Patching ioctl filter */
+	UINT64 psGetCurrentProcessId = 0x0;
+    UINT64 psGetCurrentThreadId = 0x0;
+
+	psGetCurrentProcessId = resolve_KernelFunction(sPsGetCurrentProcessId);
+	*(uint32_t*)(ioctl_filter_bypass + 1) = GetCurrentProcessId();
+	kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, psGetCurrentProcessId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
+
+	psGetCurrentThreadId = resolve_KernelFunction(sPsGetCurrentThreadId);
+	*(uint32_t*)(ioctl_filter_bypass + 1) = GetCurrentThreadId();
+	kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, psGetCurrentThreadId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
+
+	// Overwrite ticks of system timer.
+	//kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, 0xFFFFF78000000320, (uint64_t)aaa, sizeof(aaa));
 
     hprintf("[+] Allocating buffer for kAFL_payload struct");
-    kAFL_payload* payload_buffer = (kAFL_payload*)VirtualAlloc(0, PAYLOAD_SIZE, MEM_COMMIT, PAGE_READWRITE);
+    kAFL_payload* payload_buffer = (kAFL_payload*)VirtualAlloc(0, PAYLOAD_SIZE + 0x1000, MEM_COMMIT, PAGE_READWRITE);
 
-    hprintf("[+] Memset kAFL_payload at address %lx (size %d)", (uint64_t) payload_buffer, PAYLOAD_SIZE);
-    memset(payload_buffer, 0xff, PAYLOAD_SIZE);
+    hprintf("[+] Memset kAFL_payload at address %lx (size %d)", (uint64_t) payload_buffer, PAYLOAD_SIZE + 0x1000);
+    memset(payload_buffer, 0xff, PAYLOAD_SIZE + 0x1000);
 
 	/* submit the guest virtual address of the payload buffer */
     hprintf("[+] Submitting buffer address to hypervisor...");
@@ -53,18 +69,18 @@ int main(int argc, char** argv){
     create_service();
     load_driver();
 
-	kafl_vuln_handle = open_driver();
+	kafl_vuln_handle = open_driver_device();
 	if (!kafl_vuln_handle)
 		kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
-	harness();
 
 	if (!set_ip0_filter()) {
 		hprintf("[+] Fail to set ip0 filter.");
 		return 0;
 	}
-	
+
 	while(1) {
-		/* set ip0 filter */
+		harness();
+		
 		while(1){
 				kAFL_hypercall(HYPERCALL_KAFL_NEXT_PAYLOAD, 0);
 				if (payload_buffer->IoControlCode <= MAX_INST_COUNT)
@@ -96,17 +112,16 @@ int main(int argc, char** argv){
             kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 			return 0;
 		case DRIVER_REVERT:
-			kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, 0, 0);
+			kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, 0, 0, 0);
 			break;
 		case DRIVER_RELOAD:
 			CloseHandle(kafl_vuln_handle);
 			if (!unload_driver() || !load_driver())
 				kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 			
-			kafl_vuln_handle = open_driver();
+			kafl_vuln_handle = open_driver_device();
 			if (!kafl_vuln_handle)
 				kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
-			harness();
 
 			if (!set_ip0_filter()) {
 				hprintf("[+] Fail to set ip0 filter.");

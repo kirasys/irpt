@@ -9,7 +9,7 @@ from wdm.irp import IRP
 from wdm.interface import interface_manager
 
 MAX_IRP_COUNT = 1000
-MAX_PAYLOAD_LEN = 0x1000
+MAX_PAYLOAD_LEN = 0x200
 MAX_DELTA = 35
 
 class Program:
@@ -121,7 +121,7 @@ class Program:
         if len(self.irps) >= MAX_IRP_COUNT:
             return False
         
-        if rand.oneOf(2):   # generate a new irp.
+        if rand.oneOf(10):   # generate a new irp.
             irp = self.__generateIRP(random.choice(list(interface_manager.get_all_code())))
         else:               # fetch a irp from other programs
             program = random.choice(corpus_programs)

@@ -9,23 +9,19 @@ class Optimizer:
     def add(self, program, exec_res, new_bytes, new_bits):
         self.exec_results.append([program, exec_res, new_bytes, new_bits])
     
-    def __execute(self, program, reload=False, retry=0):
+    def __execute(self, program, retry=0):
         if retry > 3:
             return None
-
-        if reload:
-            self.q.reload_driver()
-        else:
-            self.q.revert_driver()
+        self.q.revert_driver()
 
         exec_res = None
         for irp in program.irps:
             exec_res = self.q.send_irp(irp)
             if exec_res.is_crash():
-                print("crashed")
+                print("Optimizer crashed")
                 if not self.q.reload():
                     self.q.reload()
-                return self.__execute(program, reload, retry + 1)
+                return self.__execute(program, retry + 1)
         return exec_res.apply_lut()
 
     def optimizable(self):
@@ -38,7 +34,7 @@ class Optimizer:
 
             # quick validation for funky case.
             old_array = old_res.copy_to_array()
-            new_res = self.__execute(program, reload=True)
+            new_res = self.__execute(program)
             if not new_res:
                 continue
             new_array = new_res.copy_to_array()
@@ -59,7 +55,7 @@ class Optimizer:
             exec_res = None
             while i < len(program.irps) and len(program.irps) > 1:
                 test_program = program.clone_with_irps(program.irps[:i] + program.irps[i+1:])
-                exec_res = self.__execute(test_program, reload=False)
+                exec_res = self.__execute(test_program)
                 if not exec_res:
                     continue
                 

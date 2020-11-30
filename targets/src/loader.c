@@ -27,21 +27,9 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 #include "driver.h"
 LPCSTR AGENTPATH = "C:\\agent.exe";
 
-/* get KeBugCheck */
-/* -------------- */
-
-#include <psapi.h>
+/* Kernel functions */
+#include "kernel.h"
 #define ARRAY_SIZE 1024
-
-PCSTR ntoskrnl = "C:\\Windows\\System32\\ntoskrnl.exe";
-PCSTR kernel_func1 = "KeBugCheck";
-PCSTR kernel_func2 = "KeBugCheckEx";
-
-FARPROC KernGetProcAddress(HMODULE kern_base, LPCSTR function){
-    // error checking? bah...
-    HMODULE kernel_base_in_user_mode = LoadLibraryA(ntoskrnl);
-    return (FARPROC)((PUCHAR)GetProcAddress(kernel_base_in_user_mode, function) - (PUCHAR)kernel_base_in_user_mode + (PUCHAR)kern_base);
-}
 
 
 /* force termination on AVs */
@@ -50,41 +38,9 @@ void WINAPI nuke(){
 }
 
 
-LONG CALLBACK catch_all(struct _EXCEPTION_POINTERS *ExceptionInfo) {
+LONG CALLBACK catch_all(struct _EXCEPTION_POINTERS *Exceptiioctl_filter_bypassonInfo) {
     ExceptionInfo->ContextRecord->Rip = (DWORD64)nuke;
     return EXCEPTION_CONTINUE_EXECUTION; // return -1;
-}
-
-
-UINT64 resolve_KeBugCheck(PCSTR kfunc){
-    LPVOID drivers[ARRAY_SIZE];
-    DWORD cbNeeded;
-    FARPROC KeBugCheck = NULL;
-    int cDrivers, i;
-
-    if( EnumDeviceDrivers(drivers, sizeof(drivers), &cbNeeded) && cbNeeded < sizeof(drivers)){ 
-        TCHAR szDriver[ARRAY_SIZE];
-        cDrivers = cbNeeded / sizeof(drivers[0]);
-        for (i=0; i < cDrivers; i++){
-            if(GetDeviceDriverFileName(drivers[i], szDriver, sizeof(szDriver) / sizeof(szDriver[0]))){
-            // assuming ntoskrnl.exe is first entry seems save (FIXME)
-                if (i == 0){
-                    KeBugCheck = KernGetProcAddress((HMODULE)drivers[i], kfunc);
-                    if (!KeBugCheck){
-                        printf("[-] w00t?");
-                        ExitProcess(0);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-    else{
-        printf("[-] EnumDeviceDrivers failed; array size needed is %d\n", (UINT32)(cbNeeded / sizeof(LPVOID)));
-        ExitProcess(0);
-    }
-
-    return  (UINT64) KeBugCheck;
 }
 /* -------------- */
 
@@ -154,17 +110,16 @@ static inline UINT64 hex_to_bin(char* str){
 }
 
 int main(int argc, char** argv){
-    UINT64 panic_handler1 = 0x0;
-    UINT64 panic_handler2 = 0x0;
+    UINT64 keBugCheck = 0x0;
+    UINT64 keBugCheckEx = 0x0;
     void* program_buffer;
 
     if (AddVectoredExceptionHandler(1, catch_all) == 0){
         printf("[+] Cannot add veh handler %u\n", (UINT32)GetLastError());
 		ExitProcess(0);
     }
-
-    panic_handler1 = resolve_KeBugCheck(kernel_func1);
-    panic_handler2 = resolve_KeBugCheck(kernel_func2);
+    keBugCheck = resolve_KernelFunction(sKeBugCheck);
+    keBugCheckEx = resolve_KernelFunction(sKeBugCheckEx);
 
     /* allocate 4MB contiguous virtual memory to hold fuzzer program; data is provided by the fuzzer */
     program_buffer = (void*)VirtualAlloc(0, PROGRAM_SIZE, MEM_COMMIT, PAGE_READWRITE);
@@ -182,8 +137,9 @@ int main(int argc, char** argv){
     kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
     kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
     /* submit panic address */
-    kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, panic_handler1);
-    kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, panic_handler2);
+    kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, keBugCheck);
+    kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, keBugCheckEx);
+
     /* submit virtual address of program buffer and wait for data (*blocking*) */
     kAFL_hypercall(HYPERCALL_KAFL_GET_PROGRAM, (UINT64)program_buffer);
     /* execute fuzzer program */

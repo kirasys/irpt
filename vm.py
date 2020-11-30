@@ -29,7 +29,6 @@ def boot_cmd(args):
     if args['snapshot']:
         cmd += '-snapshot '
     os.system(cmd)
-    print(cmd)
     pass
 
 def snapshot_cmd(args):

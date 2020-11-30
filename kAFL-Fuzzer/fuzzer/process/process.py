@@ -74,7 +74,9 @@ class Process:
 
         # restart Qemu on crash
         if exec_res.is_crash():
-            print("Crashed maybe? (%x)" % irp.IoControlCode)
+            if not exec_res.is_timeout():
+                print("Crashed maybe? (%x)" % irp.IoControlCode)
+                self.cur_program.save_to_file('unreproduced')
             self.q.reload()
             self.crasher.add(self.cur_program.clone_with_irps(self.cur_program.irps[:index+1]))
             return True

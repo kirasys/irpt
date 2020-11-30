@@ -80,7 +80,7 @@ class qemu:
 
         # TODO: list append should work better than string concatenation, especially for str.replace() and later popen()
         self.cmd += " -serial file:" + self.qemu_serial_log + \
-                    " -enable-kvm" \
+                    " -enable-kvm " \
                     " -m " + str(config.argument_values['mem']) + \
                     " -net none " + \
                     " -chardev socket,server,nowait,path=" + self.control_filename + \
