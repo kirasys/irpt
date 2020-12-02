@@ -38,7 +38,7 @@ void WINAPI nuke(){
 }
 
 
-LONG CALLBACK catch_all(struct _EXCEPTION_POINTERS *Exceptiioctl_filter_bypassonInfo) {
+LONG CALLBACK catch_all(struct _EXCEPTION_POINTERS *ExceptionInfo) {
     ExceptionInfo->ContextRecord->Rip = (DWORD64)nuke;
     return EXCEPTION_CONTINUE_EXECUTION; // return -1;
 }

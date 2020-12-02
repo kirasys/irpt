@@ -35,7 +35,10 @@ PT_TRASHED_KASAN = b'N'
 
 ABORT = b'H'
 
+# new
 LOCK = b'l'
+COVERAGE_ON = b'o'
+COVERAGE_OFF = b'x'
 
 CMDS = {
     ACQUIRE: "ACQUIRE",

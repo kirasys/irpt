@@ -53,6 +53,7 @@ class qemu:
 
         self.agent_size = config.config_values['AGENT_MAX_SIZE']
         self.bitmap_size = config.config_values['BITMAP_SHM_SIZE']
+        self.coverage_map_size = config.config_values['COVERAGE_MAP_SHM_SIZE']
         self.payload_size = config.config_values['PAYLOAD_SHM_SIZE']
         self.config = config
         self.qemu_id = str(qid)
@@ -66,6 +67,7 @@ class qemu:
         self.tracedump_filename = "/dev/shm/kafl_%s_pt_trace_dump_%s" % (project_name, self.qemu_id)
         self.binary_filename = self.config.argument_values['work_dir'] + "/program"
         self.bitmap_filename = "/dev/shm/kafl_%s_bitmap_%s" % (project_name, self.qemu_id)
+        self.coverage_map_filename = "/dev/shm/kafl_%s_coverage_map_%s" % (project_name, self.qemu_id)
 
         self.control_filename = self.config.argument_values['work_dir'] + "/interface_" + self.qemu_id
         self.qemu_trace_log = self.config.argument_values['work_dir'] + "/qemu_trace_%s.log" % self.qemu_id
@@ -84,10 +86,14 @@ class qemu:
                     " -m " + str(config.argument_values['mem']) + \
                     " -net none " + \
                     " -chardev socket,server,nowait,path=" + self.control_filename + \
-                    ",id=kafl_interface" \
-                    " -device kafl,chardev=kafl_interface,bitmap_size=" + str(self.bitmap_size) + ",shm0=" + self.binary_filename + \
+                    ",id=kafl_interface " + \
+                    "-device kafl,chardev=kafl_interface" + \
+                    ",bitmap_size=" + str(self.bitmap_size) + \
+                    ",coverage_map_size=" + str(self.coverage_map_size) + \
+                    ",shm0=" + self.binary_filename + \
                     ",shm1=" + self.payload_filename + \
-                    ",bitmap=" + self.bitmap_filename
+                    ",bitmap=" + self.bitmap_filename + \
+                    ",coverage_map=" + self.coverage_map_filename
 
         if False:  # do not emit tracefiles on every execution
             self.cmd += ",dump_pt_trace"
@@ -354,7 +360,8 @@ class qemu:
                 self.tracedump_filename,
                 self.control_filename,
                 self.binary_filename,
-                self.bitmap_filename]:
+                self.bitmap_filename,
+                self.coverage_map_filename]:
             try:
                 os.remove(tmp_file)
             except:
@@ -408,6 +415,11 @@ class qemu:
 
         try:
             os.close(self.kafl_shm_f)
+        except:
+            pass
+        
+        try:
+            os.close(self.c_shm_f)
         except:
             pass
 
@@ -494,6 +506,7 @@ class qemu:
                     raise
 
         self.kafl_shm_f     = os.open(self.bitmap_filename, os.O_RDWR | os.O_SYNC | os.O_CREAT)
+        self.c_shm_f        = os.open(self.coverage_map_filename, os.O_RDWR | os.O_SYNC | os.O_CREAT)
         self.fs_shm_f       = os.open(self.payload_filename, os.O_RDWR | os.O_SYNC | os.O_CREAT)
 
         open(self.tracedump_filename, "wb").close()
@@ -502,10 +515,13 @@ class qemu:
             os.ftruncate(f.fileno(), self.agent_size)
 
         os.ftruncate(self.kafl_shm_f, self.bitmap_size)
+        os.ftruncate(self.c_shm_f, self.coverage_map_size)
         os.ftruncate(self.fs_shm_f, self.payload_size)
 
         self.kafl_shm = mmap.mmap(self.kafl_shm_f, 0)
         self.c_bitmap = (ctypes.c_uint8 * self.bitmap_size).from_buffer(self.kafl_shm)
+        self.c_shm = mmap.mmap(self.c_shm_f, 0)
+        self.c_coverage_map = (ctypes.c_uint8 * self.coverage_map_size).from_buffer(self.c_shm)
         self.fs_shm = mmap.mmap(self.fs_shm_f, 0)
 
         return True
@@ -597,7 +613,7 @@ class qemu:
         result = self.__debug_recv()
         return result
 
-    def send_payload(self, apply_patches=True, timeout_detection=True, max_iterations=10):
+    def send_payload(self, apply_patches=True, timeout_detection=True, max_iterations=10,):
         if (self.debug_mode):
             log_qemu("Send payload..", self.qemu_id)
 
@@ -656,7 +672,8 @@ class qemu:
                 res.performance = time.time() - start_time
                 return res
 
-        return ExecutionResult(self.c_bitmap, self.bitmap_size, self.exit_reason(), time.time() - start_time)
+        return ExecutionResult(self.c_bitmap, self.c_coverage_map,
+                                self.bitmap_size, self.exit_reason(), time.time() - start_time)
 
     def exit_reason(self):
         if self.crashed:
@@ -676,6 +693,13 @@ class qemu:
 
     def submit_sampling_run(self):
         self.__debug_send(qemu_protocol.COMMIT_FILTER)
+
+    def turn_on_coverage_map(self):
+        self.__debug_send(qemu_protocol.COVERAGE_ON)
+        self.__debug_recv_expect(qemu_protocol.COVERAGE_ON)
+    
+    def turn_off_coverage_map(self):
+        self.__debug_send(qemu_protocol.COVERAGE_OFF)
 
     def execute_in_trace_mode(self, timeout_detection):
         log_qemu("Performing trace iteration...", self.qemu_id)
@@ -732,7 +756,7 @@ class qemu:
     
     def revert_driver(self):
         try:
-            self.send_irp(IRP(qemu_protocol.DRIVER_REVERT, 0, 0))
+            self.send_irp(IRP(qemu_protocol.DRIVER_RELOAD, 0, 0))
         except ConnectionResetError:
             sys.exit()
     

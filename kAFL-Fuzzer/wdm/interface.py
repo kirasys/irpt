@@ -1,8 +1,9 @@
 import json
+from common.util import MAX_RANGE_VALUE
 
 def to_range(rg):
     start, end = rg.split('-')
-    return range(int(start), int(end) + 1 if end != 'inf' else 0xffffffff)
+    return range(int(start), int(end) + 1 if end != 'inf' else MAX_RANGE_VALUE)
 
 class Interface:
     def __init__(self):

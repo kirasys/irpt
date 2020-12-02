@@ -1,3 +1,5 @@
+import copy
+
 class Optimizer:
     def __init__(self, q):
         self.q = q
@@ -9,19 +11,19 @@ class Optimizer:
     def add(self, program, exec_res, new_bytes, new_bits):
         self.exec_results.append([program, exec_res, new_bytes, new_bits])
     
-    def __execute(self, program, retry=0):
+    def __execute(self, irps, retry=0):
         if retry > 3:
             return None
         self.q.revert_driver()
 
         exec_res = None
-        for irp in program.irps:
+        for irp in irps:
             exec_res = self.q.send_irp(irp)
             if exec_res.is_crash():
                 print("Optimizer crashed")
                 if not self.q.reload():
                     self.q.reload()
-                return self.__execute(program, retry + 1)
+                return self.__execute(irps, retry + 1)
         return exec_res.apply_lut()
 
     def optimizable(self):
@@ -33,15 +35,20 @@ class Optimizer:
             program, old_res, new_bytes, new_bits = self.exec_results.pop()
 
             # quick validation for funky case.
-            old_array = old_res.copy_to_array()
-            new_res = self.__execute(program)
+            
+            self.q.turn_on_coverage_map()
+            new_res = self.__execute(program.irps)
+            self.q.turn_off_coverage_map()
             if not new_res:
                 continue
+            
+            old_array = old_res.copy_to_array()
             new_array = new_res.copy_to_array()
             if new_array != old_array:
                 continue
             program.bitmap = list(old_array)
-
+            program.coverage_map = new_res.coverage_to_array()
+            
             # program optimation
             program.exec_count = 0
             program.complexity += 1
@@ -50,12 +57,11 @@ class Optimizer:
                 optimized.append(program)
                 continue
 
-            # dedulicate same coverage irp.
+            # Remove irps not affecting coverage.
             i = 0
             exec_res = None
             while i < len(program.irps) and len(program.irps) > 1:
-                test_program = program.clone_with_irps(program.irps[:i] + program.irps[i+1:])
-                exec_res = self.__execute(test_program)
+                exec_res = self.__execute(program.irps[:i] + program.irps[i+1:])
                 if not exec_res:
                     continue
                 
@@ -75,7 +81,7 @@ class Optimizer:
                     i += 1
 
             if len(program.irps):
-                optimized.append(program.clone_with_bitmap(list(exec_res.copy_to_array())))
+                optimized.append(copy.deepcopy(program))
 
         self.exec_results = []  # clear
         return optimized

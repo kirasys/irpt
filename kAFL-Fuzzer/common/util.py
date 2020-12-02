@@ -160,3 +160,5 @@ def int2array(v, size):
 
 p32 = lambda x : struct.pack('<I', x)
 u32 = lambda x : struct.unpack('<I', x)[0]
+
+MAX_RANGE_VALUE = 0xffffffff

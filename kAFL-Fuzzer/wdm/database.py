@@ -13,7 +13,7 @@ def get_new_coverage_counts(bitmap, new_bitmap):
             count += 1
     return count
 
-COMPLEX_DOWN_THRESHOLD = 10000
+COMPLEX_DOWN_THRESHOLD = 100
 
 class Database:
     def __init__(self):
@@ -36,30 +36,37 @@ class Database:
             return
         
         for new_program in new_programs:
-            new_bitmap = new_program.bitmap
+            new_coverage_set = set(new_program.coverage_map)
 
             # Remove a duplicated unique program.
             i = 0
             while i < len(self.unique_programs):
-                old_bitmap = self.unique_programs[i].bitmap
-                count = get_new_coverage_counts(new_bitmap, old_bitmap)
-                if count == 0:  # duplicated coverage
-                    self.unique_programs[i].dump("delete")
+                old_coverage_set = set(self.unique_programs[i].coverage_map)
+                
+                count = 0
+                for address in new_coverage_set:
+                    if address in old_coverage_set:
+                        count += 1
+
+                if len(old_coverage_set) == count:
                     del self.unique_programs[i]
                     continue
                 i += 1
             self.unique_programs.append(new_program)
         
         # Calculate the probabbility map.
-        total_complexity = 0
+        total_score = 0
         self.probability_map = []
         for uniq_program in self.unique_programs:
-            probabbility = max(1, uniq_program.complexity - (uniq_program.exec_count // COMPLEX_DOWN_THRESHOLD))
-            total_complexity += probabbility
-            self.probability_map.append(probabbility)
+            score  = uniq_program.complexity
+            score += len(set(uniq_program.coverage_map))
+            score -= uniq_program.exec_count // COMPLEX_DOWN_THRESHOLD
+
+            total_score += score
+            self.probability_map.append(score)
         
         for i, uniq_program in enumerate(self.unique_programs):
-            self.probability_map[i] /= total_complexity
+            self.probability_map[i] /= total_score
 
     def get_next(self):
         if len(self.programs) == 0: # generation

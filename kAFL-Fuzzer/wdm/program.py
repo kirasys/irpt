@@ -3,7 +3,7 @@ import random
 
 from common import rand
 from common.config import FuzzerConfiguration
-from common.util import array2int, int2array, p32, u32, atomic_write, read_binary_file
+from common.util import array2int, int2array, p32, u32, atomic_write, read_binary_file, MAX_RANGE_VALUE
 
 from wdm.irp import IRP
 from wdm.interface import interface_manager
@@ -15,11 +15,12 @@ MAX_DELTA = 35
 class Program:
     NextID = 0
     
-    def __init__(self, irps=None, bitmap=None, complexity=0, exec_count=0):
+    def __init__(self, irps=None, bitmap=None, coverage_map=None,complexity=0, exec_count=0):
         if irps is None:
             irps = []
         self.irps = irps
         self.bitmap = bitmap
+        self.coverage_map = coverage_map
 
         self.exec_count = exec_count
         self.complexity = complexity
@@ -29,7 +30,9 @@ class Program:
         print("Exec count : %d " % self.exec_count)
         print("Complexity : %d " % self.complexity)
         for irp in self.irps:
-            print("IoControlCode %x InBuffer %s" % (irp.IoControlCode, bytes(irp.InBuffer[:0x20])))
+            print("IoControlCode : 0x%x\n InBufferLength 0x%x" % (irp.IoControlCode, irp.InBufferLength))
+            print(bytes(irp.InBuffer[:0x20]))
+        #print(list(map(hex, self.coverage_map)))
         print("----------------------------------")
 
     def load(self, f):
@@ -62,23 +65,20 @@ class Program:
         return Program(exec_count=self.exec_count, complexity=self.complexity, **kwargs)
 
     def clone_with_irps(self, irps):
-        return self.clone(irps=copy.deepcopy(irps), bitmap=self.bitmap)
-        
-    def clone_with_bitmap(self, bitmap):
-        return self.clone(irps=self.irps, bitmap=bitmap)
+        return self.clone(irps=copy.deepcopy(irps), bitmap=self.bitmap, coverage_map=self.coverage_map)
 
     def __generateIRP(self, iocode):
         inbuffer_ranges = interface_manager[iocode]["InBufferRange"]
         outbuffer_ranges = interface_manager[iocode]["OutBufferRange"]
 
         inlength = 0
-        outlength = 0xffffffff
+        outlength = MAX_RANGE_VALUE
         for rg in inbuffer_ranges:
             inlength = max(inlength, rg.stop - 1)
         for rg in outbuffer_ranges:
             outlength = min(outlength, rg.start)
 
-        inlength = inlength if inlength <= MAX_PAYLOAD_LEN else MAX_PAYLOAD_LEN
+        inlength = inlength if inlength != MAX_RANGE_VALUE-1 else MAX_PAYLOAD_LEN
         return IRP(iocode, inlength, outlength)
 
     def generate(self):
@@ -88,12 +88,10 @@ class Program:
     def mutate(self, corpus_programs):
         ok = False
         while len(self.irps) != 0 and not ok:
-            if rand.nOutOf(1, 300):
+            if rand.nOutOf(1, 100):
                 ok = self.__splice(corpus_programs)
-            elif rand.nOutOf(1, 200):
+            elif rand.nOutOf(1, 100):
                 ok = self.__insertIRP(corpus_programs)
-            elif rand.nOutOf(1, 500):
-                ok = self.__removeIRP()
             elif rand.nOutOf(1, 200):
                 ok = self.__swapIRP()
             
@@ -109,8 +107,7 @@ class Program:
             return False
         
         p0 = random.choice(corpus_programs)
-        idx = rand.Index(len(self.irps))
-        self.irps = self.irps[:idx] + copy.deepcopy(p0.irps[:MAX_IRP_COUNT - idx])
+        self.irps += copy.deepcopy(p0.irps)
         return True
 
     def __insertIRP(self, corpus_programs):
@@ -120,12 +117,9 @@ class Program:
         """
         if len(self.irps) >= MAX_IRP_COUNT:
             return False
-        
-        if rand.oneOf(10):   # generate a new irp.
-            irp = self.__generateIRP(random.choice(list(interface_manager.get_all_code())))
-        else:               # fetch a irp from other programs
-            program = random.choice(corpus_programs)
-            irp = copy.deepcopy(random.choice(program.irps))
+        # fetch a irp from other programs
+        program = random.choice(corpus_programs)
+        irp = copy.deepcopy(random.choice(program.irps))
 
         # TODO: biasd random??
         self.irps.insert(rand.Index(len(self.irps)), irp)
