@@ -26,6 +26,7 @@ from common.debug import log_qemu
 from common.execution_result import ExecutionResult
 from common.util import read_binary_file, atomic_write, print_fail, print_warning, strdump, p32
 from wdm.irp import IRP
+from debug.log import log
 
 def to_string_32(value):
     return [(value >> 24) & 0xff,
@@ -38,6 +39,8 @@ class qemu:
     CMDS = qemu_protocol.CMDS
 
     def __init__(self, qid, config, debug_mode=False, notifiers=True):
+
+        self.i = 0
 
         self.hprintf_print_mode = True
         self.internal_buffer_overflow_counter = 0
@@ -80,7 +83,7 @@ class qemu:
 
         # TODO: list append should work better than string concatenation, especially for str.replace() and later popen()
         self.cmd += " -serial file:" + self.qemu_serial_log + \
-                    " -enable-kvm" \
+                    " -nographic -enable-kvm" \
                     " -m " + str(config.argument_values['mem']) + \
                     " -net nic -cpu host" + \
                     " -net user,hostfwd=tcp::2222-:22" + \
@@ -448,7 +451,7 @@ class qemu:
         self.process = subprocess.Popen(self.cmd,
                 preexec_fn=os.setpgrp,
                 stdin=subprocess.PIPE,
-                #stdout=subprocess.PIPE,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
 
         try:
@@ -715,8 +718,10 @@ class qemu:
 
     def send_irp(self, irp, retry=0):
         try:
-            print(hex(irp.IoControlCode), hex(irp.InBufferLength), bytes(irp.InBuffer[:0x10]))
-            #sys.stdout.write("\033[F")
+            if self.i % 1000 == 0:
+                log(f"iocode: {hex(irp.IoControlCode)}, payload: {bytes(irp.InBuffer[:0x10])}.., len: {hex(irp.InBufferLength)}", label='IRP')
+            self.i += 1
+
             self.set_payload(irp)
             return self.send_payload()
         except (ValueError, BrokenPipeError):
