@@ -19,7 +19,7 @@ from wdm.database import Database
 from wdm.crasher import Crasher
 from fuzzer.statistics import MasterStatistics
 from fuzzer.bitmap import BitmapStorage
-from fuzzer.technique import bitflip, arithmetic, interesting_values
+from fuzzer.technique import bitflip, arithmetic, interesting_values, rand_values
 
 u32 = lambda x : struct.unpack('<I', x)[0]
 
@@ -136,6 +136,12 @@ class Process:
                 return
             if interesting_values.mutate_seq_32_bit_interesting(index, self):
                 return
+            
+            # Random value mutations
+            if rand_values.mutate_seq_8_bit_rand8bit(index, self):
+                return
+            if rand_values.mutate_seq_64_bit_rand8bit(index, self):
+                return
     
     def loop(self):
         if not self.q.start():
@@ -168,7 +174,7 @@ class Process:
         program = Program()
         program.generate()
         self.execute(program)
-
+        
         while self.optimizer.optimizable():
             new_programs = self.optimizer.optimize()
             if new_programs:

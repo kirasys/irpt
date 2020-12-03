@@ -128,6 +128,8 @@ def in_range_16(value):
 def in_range_32(value):
     return ctypes.c_uint32(value).value
 
+def in_range_64(value):
+    return ctypes.c_uint64(value).value
 
 def swap_16(value):
     return struct.unpack("<H", struct.pack(">H", value))[0]
@@ -136,6 +138,8 @@ def swap_16(value):
 def swap_32(value):
     return struct.unpack("<I", struct.pack(">I", value))[0]
 
+def swap_64(value):
+    return struct.unpack("<Q", struct.pack(">Q", value))[0]
 
 bitmap_native_so = None
 

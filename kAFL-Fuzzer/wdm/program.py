@@ -72,13 +72,14 @@ class Program:
         outbuffer_ranges = interface_manager[iocode]["OutBufferRange"]
 
         inlength = 0
-        outlength = MAX_RANGE_VALUE
+        outlength = 0
         for rg in inbuffer_ranges:
             inlength = max(inlength, rg.stop - 1)
         for rg in outbuffer_ranges:
-            outlength = min(outlength, rg.start)
+            outlength = max(outlength, rg.stop - 1)
 
         inlength = inlength if inlength != MAX_RANGE_VALUE-1 else MAX_PAYLOAD_LEN
+        outlength = outlength if outlength != MAX_RANGE_VALUE-1 else MAX_PAYLOAD_LEN
         return IRP(iocode, inlength, outlength)
 
     def generate(self):

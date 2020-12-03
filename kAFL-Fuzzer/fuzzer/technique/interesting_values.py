@@ -45,7 +45,7 @@ def mutate_seq_16_bit_interesting(index, self):
         start = rand.Intn(((end - 1) // MAX_INTERESTING_SIZE)) * MAX_INTERESTING_SIZE
         end = min(end, start + MAX_INTERESTING_SIZE)
 
-    for i in range(end - 1):
+    for i in range(start, end - 1):
         orig = data[i:i+2]
         oval = (orig[1] << 8) | orig[0]
 
@@ -80,7 +80,7 @@ def mutate_seq_32_bit_interesting(index, self):
         start = rand.Intn(((end - 1) // MAX_INTERESTING_SIZE)) * MAX_INTERESTING_SIZE
         end = min(end, start + MAX_INTERESTING_SIZE)
 
-    for i in range(end - 3):
+    for i in range(start, end - 3):
         orig = data[i:i+4]
         oval = (orig[3] << 24) | (orig[2] << 16) | (orig[1] << 8) | orig[0]
 

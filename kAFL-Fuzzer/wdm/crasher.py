@@ -11,6 +11,9 @@ class Crasher:
     def add(self, program):
         self.crash_programs.append(copy.deepcopy(program))
 
+    def reproducible(self):
+        return len(self.crash_programs) > 0
+
     def reproduce(self):
         for program in self.crash_programs:
             self.q.reload_driver()
