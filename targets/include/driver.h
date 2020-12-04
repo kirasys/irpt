@@ -4,7 +4,7 @@
 LPCSTR SVCNAME = "target_driver";
 LPCSTR DRIVERNAME = "target_driver.sys";
 LPCSTR DRIVERPATH = "C:\\target_driver.sys";
-LPCSTR DRIVER_SVCPATH = "\\\\.\\toy";
+LPCSTR DRIVER_SVCPATH = "\\\\.\\VMnetUserif";
 
 #define ARRAY_SIZE 1024
 
@@ -63,6 +63,7 @@ bool delete_service() {
 	DeleteService(schService);
 	CloseServiceHandle(schService);
 	CloseServiceHandle(scmHandle);
+	return true;
 }
 
 bool load_driver() {
