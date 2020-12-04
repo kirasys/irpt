@@ -28,7 +28,7 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 HANDLE kafl_vuln_handle;
 
 void harness() {
-	kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, module_base_address + 0x15210, (uint64_t)"\x00\x00\x00\x00\x00\x00\x00\x00", 8);
+	//kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, module_base_address + 0x15210, (uint64_t)"\x00\x00\x00\x00\x00\x00\x00\x00", 8);
 	return;
 }
 
