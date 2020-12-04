@@ -38,12 +38,17 @@ def ioctl_coverage_cmd(args):
 def reproduction_cmd(args):
     cmd  = BASIC_CMD % ('reproduction', args['driver'], args['interface'], args['vm'])
     cmd += '-payload %s ' % args['payload']
+    if args['revert']:
+        cmd += "-revert "
+
     os.system(cmd)
     os.system('kill -9 `pgrep qemu`')
 
 def fuzz_cmd(args):
     cmd = BASIC_CMD % ('kafl_fuzz', args['driver'], args['interface'], args['vm'])
-    
+    if args['revert']:
+        cmd += "-revert "
+
     if args['tui']:
         cmd += "-tui "
         monitor_cmd = "python3 kAFL-Fuzzer/kafl_mon.py out " + os.path.basename(args['driver'])
@@ -75,6 +80,8 @@ def add_args_general(parser):
     parser.add_argument('-interface', metavar='<file>', required=True, action=FullPath,
                         type=parse_is_file, help='path to payload to reproduce.', default=None)
     parser.add_argument('-vm', required=False, help='Name of the snapshot (default: irpt)', default="irpt")
+    parser.add_argument('-revert', required=False, help="enable driver revert mode.",
+                        action='store_true', default=False)
     parser.add_argument('-tui', required=False, help="enable TUI based monitor",
                         action='store_true', default=False)
 

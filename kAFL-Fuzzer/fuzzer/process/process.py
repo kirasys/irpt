@@ -98,7 +98,7 @@ class Process:
 
     def execute(self, program):
         self.__set_current_program(program)
-        self.q.revert_driver()
+        self.q.reload_driver()
 
         for i in range(len(self.cur_program.irps)):
             if self.execute_irp(i):
@@ -109,7 +109,7 @@ class Process:
 
         irps = self.cur_program.irps
         for index in range(len(irps)):
-            self.q.revert_driver()
+            self.q.reload_driver()
             for j in range(index):
                 exec_res = self.q.send_irp(irps[j])
                 if exec_res.is_crash():
@@ -195,9 +195,9 @@ class Process:
         while True:
             log("[+] starting new cycle ..")
             program = self.database.get_next()
+            programCopyed = copy.deepcopy(program)
 
-            for _ in range(10):
-                programCopyed = copy.deepcopy(program)
+            for _ in range(5):    
                 method = programCopyed.mutate(corpus_programs=self.database.getAll())
                 self.statistics.event_method(method, programCopyed.program_struct["id"])
 

@@ -147,6 +147,8 @@ def add_args_fuzzer(parser):
                         type=parse_is_file, help='path to IOCTL interface information file.')
     parser.add_argument('-payload', metavar='<file>', required=False, action=FullPath,
                         type=parse_is_file, help='path to payload to reproduce.')
+    parser.add_argument('-revert', required=False, help="enable driver revert mode",
+                        action='store_true', default=False)
     parser.add_argument('-tui', required=False, help="enable TUI based monitor",
                         action='store_true', default=False)
 

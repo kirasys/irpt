@@ -17,14 +17,13 @@ class Optimizer:
     def __execute(self, irps, retry=0):
         if retry > 3:
             return None
-        self.q.revert_driver()
+        self.q.reload_driver()
 
         exec_res = None
         for irp in irps:
             exec_res = self.q.send_irp(irp)
             if exec_res.is_crash():
-                if not self.q.reload():
-                    self.q.reload()
+                self.q.reload()
                 return self.__execute(irps, retry + 1)
         return exec_res.apply_lut()
 

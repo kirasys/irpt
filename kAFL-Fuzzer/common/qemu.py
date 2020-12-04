@@ -175,6 +175,9 @@ class qemu:
         # count of send_irp execution.
         self.count = 0
 
+        # select a reload mode.
+        self.reload_driver = self._revert_driver if config.argument_values['revert'] else self._reload_driver
+
     def __debug_hprintf(self):
         try:
             if self.debug_counter < 512:
@@ -759,12 +762,12 @@ class qemu:
                 raise
         return self.send_irp(irp, retry=retry+1)
     
-    def revert_driver(self):
+    def _revert_driver(self):
         try:
-            self.send_irp(IRP(qemu_protocol.DRIVER_RELOAD, 0, 0))
+            self.send_irp(IRP(qemu_protocol.DRIVER_REVERT, 0, 0))
         except ConnectionResetError:
             sys.exit()
     
-    def reload_driver(self):
+    def _reload_driver(self):
         self.send_irp(IRP(qemu_protocol.DRIVER_RELOAD, 0, 0))
     
