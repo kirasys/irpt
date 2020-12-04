@@ -47,6 +47,25 @@ bool create_service() {
 	return success;
 }
 
+
+void delete_service() {
+	SC_HANDLE scmHandle = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
+	if (!scmHandle) {
+		hprintf("[delete_service] OpenSCManager error!");
+		return false;
+	}
+
+	SC_HANDLE schService = OpenServiceA(scmHandle, SVCNAME, DELETE);
+	if (!schService) {
+		CloseServiceHandle(scmHandle);
+		hprintf("[delete_service] OpenServiceA error!");
+		return false;
+	}
+	DeleteService(schService);
+	CloseServiceHandle(schService);
+	CloseServiceHandle(scmHandle);
+}
+
 bool load_driver() {
     bool success = true;
 	SC_HANDLE scmHandle = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);

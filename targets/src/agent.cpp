@@ -48,9 +48,6 @@ int main(int argc, char** argv){
 	*(uint32_t*)(ioctl_filter_bypass + 1) = GetCurrentThreadId();
 	kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, psGetCurrentThreadId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
 
-	// Overwrite ticks of system timer.
-	//kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, 0xFFFFF78000000320, (uint64_t)aaa, sizeof(aaa));
-
     hprintf("[+] Allocating buffer for kAFL_payload struct");
     kAFL_payload* payload_buffer = (kAFL_payload*)VirtualAlloc(0, PAYLOAD_SIZE + 0x1000, MEM_COMMIT, PAGE_READWRITE);
 
@@ -66,6 +63,7 @@ int main(int argc, char** argv){
     kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_CR3, 0);
 
 	// Register the driver.
+	delete_service();
     create_service();
     load_driver();
 

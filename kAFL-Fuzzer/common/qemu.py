@@ -700,7 +700,6 @@ class qemu:
 
     def turn_on_coverage_map(self):
         self.__debug_send(qemu_protocol.COVERAGE_ON)
-        self.__debug_recv_expect(qemu_protocol.COVERAGE_ON)
     
     def turn_off_coverage_map(self):
         self.__debug_send(qemu_protocol.COVERAGE_OFF)

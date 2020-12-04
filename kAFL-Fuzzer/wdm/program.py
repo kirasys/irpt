@@ -277,10 +277,10 @@ class Program:
         self.update_file(write=True)
 
     def get_parent_id(self):
-        return self.program_struct["parent"]
+        return self.program_struct["info"]["parent"]
 
     def set_parent_id(self, val):
-        self.program_struct["parent"] = val
+        self.program_struct["info"]["parent"] = val
 
     def get_id(self):
         return self.program_struct["id"]
