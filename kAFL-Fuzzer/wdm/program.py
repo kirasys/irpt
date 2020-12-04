@@ -1,5 +1,9 @@
 import copy
+import time
 import random
+import msgpack
+
+from debug.log import log
 
 from common import rand
 from common.config import FuzzerConfiguration
@@ -14,26 +18,46 @@ MAX_DELTA = 35
 
 class Program:
     NextID = 0
+    PayloadCount = 0
     
-    def __init__(self, irps=None, bitmap=None, coverage_map=None,complexity=0, exec_count=0):
+    def __init__(self, program_struct=None, irps=None, bitmap=None, coverage_map=None):
+        if program_struct is None:
+            program_struct = {
+                'info':{
+                    'exit_reason': 'regular', 
+                    'parent': 0, 
+                },
+                'level':0,
+                'exec_count':0,
+                'state':{'name':'initial', 'initial': True},
+                'new_bytes':{},
+                'new_bits':{}, 
+                'fav_bytes':{},
+                'fav_bits':{},
+                'fav_factor': 0
+            }
+        else:
+            program_struct = copy.deepcopy(program_struct)
+        self.program_struct = program_struct
+
         if irps is None:
             irps = []
+        else:
+            irps = copy.deepcopy(irps)
         self.irps = irps
+
         self.bitmap = bitmap
         self.coverage_map = coverage_map
+        self.set_id()
 
-        self.exec_count = exec_count
-        self.complexity = complexity
+    def dump(self, label="PROGRAM"):
+        log(label)
+        log(f"Exec count: {self.get_exec_count()}", label="PROGRAM")
+        log(f"Complexity: {self.get_level()}", label="PROGRAM")
+        log(f"ProgramID: {self.get_id()}", label="PROGRAM")
 
-    def dump(self, label="Program"):
-        print("-------------%s--------------" % label)
-        print("Exec count : %d " % self.exec_count)
-        print("Complexity : %d " % self.complexity)
         for irp in self.irps:
-            print("IoControlCode : 0x%x\n InBufferLength 0x%x" % (irp.IoControlCode, irp.InBufferLength))
-            print(bytes(irp.InBuffer[:0x20]))
-        #print(list(map(hex, self.coverage_map)))
-        print("----------------------------------")
+            log("IoControlCode: %x InBuffer: %s" % (irp.IoControlCode, bytes(irp.InBuffer[:0xff])), label='PROGRAM')
 
     def load(self, f):
         i = 0
@@ -55,17 +79,17 @@ class Program:
             data += bytes(irp.InBuffer)
         return data
 
-    def save_to_file(self, exit_reason='regular'):
+    def save_to_file(self, label):
         workdir = FuzzerConfiguration().argument_values['work_dir']
-        filename = "/corpus/%s/payload_%05d" % (exit_reason, Program.NextID)
+        filename = "/corpus/%s/payload_%05d" % (label, Program.PayloadCount)
         atomic_write(workdir + filename, self.serialize())
-        Program.NextID += 1
+        Program.PayloadCount += 1
 
-    def clone(self, **kwargs):
-        return Program(exec_count=self.exec_count, complexity=self.complexity, **kwargs)
 
     def clone_with_irps(self, irps):
-        return self.clone(irps=copy.deepcopy(irps), bitmap=self.bitmap, coverage_map=self.coverage_map)
+        cloned = copy.deepcopy(self)
+        cloned.irps = copy.deepcopy(irps)
+        return cloned
 
     def __generateIRP(self, iocode):
         inbuffer_ranges = interface_manager[iocode]["InBufferRange"]
@@ -87,17 +111,19 @@ class Program:
             self.irps.append(self.__generateIRP(iocode))
     
     def mutate(self, corpus_programs):
-        ok = False
-        while len(self.irps) != 0 and not ok:
-            if rand.nOutOf(1, 100):
-                ok = self.__splice(corpus_programs)
-            elif rand.nOutOf(1, 100):
-                ok = self.__insertIRP(corpus_programs)
-            elif rand.nOutOf(1, 200):
-                ok = self.__swapIRP()
-            
-            if rand.nOutOf(9, 11):
-                ok = self.__mutateArg()
+        method = "AFLdetermin"
+
+        if rand.oneOf(10) and self.__splice(corpus_programs):
+            method = "splice"
+        elif rand.oneOf(10) and self.__insertIRP(corpus_programs):
+            method = "insertIRP"
+        elif rand.oneOf(10) and self.__swapIRP():
+            method = "swapIRP"
+        elif rand.oneOf(10) and self.__mutateArg():
+            method = "mutateArg"
+        
+        self.set_state(method)
+        return method
 
     def __splice(self, corpus_programs):
         """
@@ -151,8 +177,7 @@ class Program:
         ok = False
         while not ok:
             ok = self.__mutateBuffer(self.irps[idx])
-
-        return False
+        return ok
     
     def __mutateBuffer(self, irp):
         if len(irp.InBuffer) == 0: # Case of InBufferLenght == 0
@@ -160,28 +185,20 @@ class Program:
 
         ok = False
         while not ok:
-            if rand.nOutOf(7, 10):
-                ok = self.__flipBit(irp.InBuffer)
-            elif rand.nOutOf(2, 10):
+            if rand.oneOf(3):
                 ok = self.__addsubBytes(irp.InBuffer)
-            elif rand.nOutOf(1, 10):
+            elif rand.oneOf(3):
                 ok = self.__replaceBytes(irp.InBuffer)
             else: # maybe change InBufferLength
-                if rand.nOutOf(1, 20):
+                if rand.oneOf(2):
                     ok = self.__insertBytes(irp.InBuffer)
                 else:
                     ok = self.__removeBytes(irp.InBuffer)
 
-                if not ok or interface_manager.satisfiable(irp):
+                if not ok or not interface_manager.satisfiable(irp):
                     continue
+        return True
 
-        return True
-    
-    def __flipBit(self, buffer):
-        pos = rand.Index(len(buffer))
-        bit = rand.Index(8)
-        buffer[pos] ^= 1 << bit
-        return True
     
     def __replaceBytes(self, buffer):
         width = 1 << rand.Index(4)
@@ -238,4 +255,92 @@ class Program:
     
     def __appendBunch(self, buffer):
         pass
+    
+    @staticmethod
+    def __get_metadata_filename(id):
+        workdir = FuzzerConfiguration().argument_values['work_dir']
+        return workdir + "/metadata/node_%05d" % id
+
+    def write_metadata(self):
+        return atomic_write(self.__get_metadata_filename(self.get_id()), msgpack.packb(self.program_struct, use_bin_type=True))
+
+    def update_file(self, write=True):
+        if write:
+            self.write_metadata()
+            self.dirty = False
+        else:
+            self.dirty = True
+    
+    def update_metadata(self):
+        self.program_struct["info"]["time"] = time.time()
+        self.program_struct["map_density"] = self.map_density()
+        self.update_file(write=True)
+
+    def get_parent_id(self):
+        return self.program_struct["parent"]
+
+    def set_parent_id(self, val):
+        self.program_struct["parent"] = val
+
+    def get_id(self):
+        return self.program_struct["id"]
+
+    def set_id(self):
+        Program.NextID += 1
+        self.program_struct["id"] = Program.NextID
+
+    def get_new_bytes(self):
+        return self.program_struct["new_bytes"]
+
+    def set_new_bytes(self, val):
+        self.program_struct["new_bytes"] = val
+    
+    def get_new_bits(self):
+        return self.program_struct["new_bits"]
+
+    def set_new_bits(self, val):
+        self.program_struct["new_bits"] = val
+    
+    def clear_fav_bits(self):
+        self.program_struct["fav_bits"] = {}
+
+    def get_fav_bits(self):
+        return self.program_struct["fav_bits"]
+
+    def add_fav_bit(self, index):
+        self.program_struct["fav_bits"][index] = 0
+
+    def remove_fav_bit(self, index):
+        assert index in self.program_struct["fav_bits"]
+        self.program_struct["fav_bits"].pop(index)
+        
+    def is_favorite(self):
+        return len(self.program_struct["fav_bits"]) > 0
+
+    def get_exec_count(self):
+        return self.program_struct["exec_count"]
+    
+    def set_exec_count(self, val):
+        self.program_struct["exec_count"] = val
+    
+    def increment_exec_count(self):
+        self.program_struct["exec_count"] += 1
+
+    def get_level(self):
+        return self.program_struct["level"]
+
+    def set_level(self, val):
+        self.program_struct["level"] = val
+
+    def set_state(self, val):
+        self.program_struct["state"]["name"] = val
+
+    def map_density(self):
+        return 100 * len(self.program_struct["new_bytes"]) / (64 * 1024)
+    
+    def get_exit_reason(self):
+        return self.program_struct["info"]["exit_reason"]
+    
+    def set_exit_reason(self, exit_reason):
+        self.program_struct["info"]["exit_reason"] = exit_reason
     

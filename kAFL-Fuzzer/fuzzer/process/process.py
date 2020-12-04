@@ -7,17 +7,20 @@ import time
 import copy
 import struct
 
+from debug.log import log
+
 from common import rand
+from common.qemu import qemu
 from common.debug import log_process
 from common.util import print_warning, print_fail, print_note, p32
 from common.execution_result import ExecutionResult
-from common.qemu import qemu
+
 from wdm.irp import IRP
 from wdm.program import Program
 from wdm.optimizer import Optimizer
 from wdm.database import Database
 from wdm.crasher import Crasher
-from fuzzer.statistics import MasterStatistics
+from fuzzer.statistics import ProcessStatistics
 from fuzzer.bitmap import BitmapStorage
 from fuzzer.technique import bitflip, arithmetic, interesting_values, rand_values
 
@@ -34,7 +37,7 @@ class Process:
         self.busy_events = 0
         self.empty_hash = mmh3.hash(("\x00" * self.config.config_values['BITMAP_SHM_SIZE']), signed=False)
 
-        self.statistics = MasterStatistics(self.config)
+        self.statistics = ProcessStatistics(self.config)
         self.bitmap_storage = BitmapStorage(config, config.config_values['BITMAP_SHM_SIZE'], "process", read_only=False)
 
         log_process("Starting (pid: %d)" % os.getpid())
@@ -43,9 +46,9 @@ class Process:
 
         self.q = qemu(pid, self.config,
                       debug_mode=config.argument_values['debug'])
-        self.optimizer = Optimizer(self.q)
-        self.crasher = Crasher(self.q)
-        self.database = Database() # load interface
+        self.optimizer = Optimizer(self.q, self.statistics)
+        self.crasher = Crasher(self.q, self.statistics)
+        self.database = Database(self.statistics) # load interface
 
     def maybe_insert_program(self, program, exec_res):
         bitmap_array = exec_res.copy_to_array()
@@ -54,6 +57,8 @@ class Process:
         bitmap.lut_applied = True  # since we received the bitmap from the should_send_to_master, the lut was already applied
         should_store, new_bytes, new_bits = self.bitmap_storage.should_store_in_queue(bitmap)
         if should_store and not exec_res.is_crash():
+            program.set_new_bits(new_bits)
+            program.set_new_bytes(new_bytes)
             self.optimizer.add(program, bitmap, new_bytes, new_bits)
 
     def execute_irp(self, index):
@@ -64,8 +69,9 @@ class Process:
         # send irp request.
         irp = self.cur_program.irps[index]
         exec_res = self.q.send_irp(irp)
+        self.statistics.event_exec() 
+    
         is_new_input = self.bitmap_storage.should_send_to_master(exec_res)
-
         if is_new_input:
             new_program = self.cur_program.clone_with_irps(self.cur_program.irps[:index+1])
             self.maybe_insert_program(new_program, exec_res)
@@ -74,15 +80,20 @@ class Process:
 
         # restart Qemu on crash
         if exec_res.is_crash():
-            if not exec_res.is_timeout():
-                print("Crashed maybe? (%x)" % irp.IoControlCode)
-                self.cur_program.save_to_file('unreproduced')
+            if exec_res.is_timeout():
+                log("Timeouted maybe? (%x)" % irp.IoControlCode, "CRASH")
+            else:
+                log("Crashed maybe? (%x)" % irp.IoControlCode, "CRASH")
+                self.cur_program.save_to_file("unreproduced")
+
             self.q.reload()
+            self.statistics.event_reload()
             self.crasher.add(self.cur_program.clone_with_irps(self.cur_program.irps[:index+1]))
             return True
         return False
 
     def __set_current_program(self, program):
+        program.increment_exec_count()
         self.cur_program = program
 
     def execute(self, program):
@@ -182,28 +193,29 @@ class Process:
                 self.database.add(new_programs)
 
         while True:
+            log("[+] starting new cycle ..")
             program = self.database.get_next()
 
             for _ in range(10):
                 programCopyed = copy.deepcopy(program)
-                programCopyed.mutate(self.database.getAll())
-                if rand.oneOf(10):
-                    self.execute_deterministic(programCopyed)
-                else:    
-                    self.execute(programCopyed)
-                program.exec_count += 1
+                method = programCopyed.mutate(corpus_programs=self.database.getAll())
+                self.statistics.event_method(method, programCopyed.program_struct["id"])
+
+                # Execute
+                self.execute_deterministic(programCopyed)
 
                 # Get a new interesting corpus
                 while self.optimizer.optimizable():
                     new_programs = self.optimizer.optimize()
                     if new_programs:
-                        log_process("[+] New interesting program found.")
+                        log("[+] New interesting program found.")
                         self.database.add(new_programs)
                         
                         # Start deterministic execution.
                         for prog in new_programs:
+                            prog.set_state("AFLdetermin")
+                            self.statistics.event_method("AFLdetermin", prog.program_struct["id"])
                             self.execute_deterministic(prog)
-                            prog.exec_count += 1
                 
                 # crash reproduction
                 self.crasher.reproduce()

@@ -1,8 +1,10 @@
 import json
+import time
 import random
 import numpy as np
 
 from common import rand
+from debug.log import log
 from wdm.program import Program
 
 def get_new_coverage_counts(bitmap, new_bitmap):
@@ -16,10 +18,13 @@ def get_new_coverage_counts(bitmap, new_bitmap):
 COMPLEX_DOWN_THRESHOLD = 100
 
 class Database:
-    def __init__(self):
+    def __init__(self, statistics):
+        self.statistics = statistics
+
         self.programs = []
         self.unique_programs = []
         self.interface = {}
+        self.id_to_program = {}
 
         self.probability_map = []
 
@@ -58,9 +63,9 @@ class Database:
         total_score = 0
         self.probability_map = []
         for uniq_program in self.unique_programs:
-            score  = uniq_program.complexity
+            score  = uniq_program.get_level()
             score += len(set(uniq_program.coverage_map))
-            score -= uniq_program.exec_count // COMPLEX_DOWN_THRESHOLD
+            score -= uniq_program.get_exec_count() // COMPLEX_DOWN_THRESHOLD
 
             total_score += score
             self.probability_map.append(score)
@@ -72,20 +77,35 @@ class Database:
         if len(self.programs) == 0: # generation
             program = Program()
             program.generate()
+            program.update_metadata()
+
             self.programs.append(program)
+            self.id_to_program[program.get_id()] = program
+            self.statistics.event_program_new(program)
+            self.statistics.event_database_cycle(program.program_struct["id"], len(self.programs), len(self.unique_programs))
             return self.programs[0]
 
         if len(self.unique_programs) == 0 or rand.oneOf(10):        
             program = random.choice(self.programs)
         else:
             program = np.random.choice(self.unique_programs, p=self.probability_map)
+        self.statistics.event_database_cycle(program.program_struct["id"], len(self.programs), len(self.unique_programs))
         return program
     
     def add(self, programs):
-        self.programs += programs
-        self.__unique_selection(programs)
+        for program in programs:
+            program.set_parent_id(program.get_id())
+            program.set_id()
 
-        self.dump()
+            ppid = program.get_parent_id()
+            program.set_level(self.id_to_program[ppid].get_level() + 1 if ppid != 1 else 0)
+            program.update_metadata()
+            
+            self.programs.append(program)
+            self.id_to_program[program.get_id()] = program
+            self.statistics.event_program_new(program)
+
+        self.__unique_selection(programs)
     
     def save(self):
         for p in self.unique_programs:

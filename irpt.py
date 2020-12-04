@@ -1,6 +1,8 @@
 import os
 import sys
+import time
 import argparse
+import multiprocessing
 
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -41,7 +43,30 @@ def reproduction_cmd(args):
 
 def fuzz_cmd(args):
     cmd = BASIC_CMD % ('kafl_fuzz', args['driver'], args['interface'], args['vm'])
-    os.system(cmd)
+    
+    if args['tui']:
+        cmd += "-tui "
+        monitor_cmd = "python3 kAFL-Fuzzer/kafl_mon.py out " + os.path.basename(args['driver'])
+
+        while True:
+            row, col = os.popen('stty size', 'r').read().split()
+            if int(row) < 27 or int(col) < 82:
+                print("Your terminal is too small to show monitor!")
+                time.sleep(1)
+            else:
+                break
+        
+        procs = [multiprocessing.Process(target=os.system, args=(cmd,)),
+                 multiprocessing.Process(target=os.system, args=(monitor_cmd,))]
+        for proc in procs:
+            time.sleep(1)
+            proc.start()
+        for proc in procs:
+            proc.join()
+    else:
+        os.system(cmd)
+
+
 
 def add_args_general(parser):
     parser.add_argument('-driver', metavar='<file>', required=True, action=FullPath,
@@ -50,6 +75,8 @@ def add_args_general(parser):
     parser.add_argument('-interface', metavar='<file>', required=True, action=FullPath,
                         type=parse_is_file, help='path to payload to reproduce.', default=None)
     parser.add_argument('-vm', required=False, help='Name of the snapshot (default: irpt)', default="irpt")
+    parser.add_argument('-tui', required=False, help="enable TUI based monitor",
+                        action='store_true', default=False)
 
 def add_args_reprodunction(parser):
     parser.add_argument('-payload', metavar='<file>', required=False, action=FullPath,

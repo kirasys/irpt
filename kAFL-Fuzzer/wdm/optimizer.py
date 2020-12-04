@@ -1,15 +1,18 @@
 import copy
 
 class Optimizer:
-    def __init__(self, q):
+    def __init__(self, q, statistics):
         self.q = q
-        self.exec_results = []
+        self.statistics = statistics
+
+        self.optimizer_queue = []
+        self.bitmap_index_to_fav_program = {}
     
     def clear(self):
-        self.exec_results = []
+        self.optimizer_queue = []
 
     def add(self, program, exec_res, new_bytes, new_bits):
-        self.exec_results.append([program, exec_res, new_bytes, new_bits])
+        self.optimizer_queue.append([program, exec_res, new_bytes, new_bits])
     
     def __execute(self, irps, retry=0):
         if retry > 3:
@@ -20,22 +23,20 @@ class Optimizer:
         for irp in irps:
             exec_res = self.q.send_irp(irp)
             if exec_res.is_crash():
-                print("Optimizer crashed")
                 if not self.q.reload():
                     self.q.reload()
                 return self.__execute(irps, retry + 1)
         return exec_res.apply_lut()
 
     def optimizable(self):
-        return len(self.exec_results) > 0
+        return len(self.optimizer_queue) > 0
 
     def optimize(self):
         optimized = []
-        while len(self.exec_results):
-            program, old_res, new_bytes, new_bits = self.exec_results.pop()
+        while len(self.optimizer_queue):
+            program, old_res, new_bytes, new_bits = self.optimizer_queue.pop()
 
             # quick validation for funky case.
-            
             self.q.turn_on_coverage_map()
             new_res = self.__execute(program.irps)
             self.q.turn_off_coverage_map()
@@ -50,9 +51,7 @@ class Optimizer:
             program.coverage_map = new_res.coverage_to_array()
             
             # program optimation
-            program.exec_count = 0
-            program.complexity += 1
-
+            program.set_exec_count(0)
             if len(program.irps) <= 1:
                 optimized.append(program)
                 continue
@@ -83,5 +82,35 @@ class Optimizer:
             if len(program.irps):
                 optimized.append(copy.deepcopy(program))
 
-        self.exec_results = []  # clear
+                program.clear_fav_bits()
+                self.__update_best_input_for_bitmap_entry(program, exec_res)  
+
+        self.optimizer_queue = []  # clear
         return optimized
+    
+    def __should_overwrite_old_entry(self, index, val, node):
+        entry = self.bitmap_index_to_fav_program.get(index)
+        if not entry:
+            return True, None
+        old_program, old_val = entry
+        more_bits = val > old_val
+        # better_score = (val == old_val and program.get_fav_factor() < old_program.get_fav_factor())
+        if more_bits: # or better_score:
+            return True, old_program
+        return False, None
+
+    def __update_best_input_for_bitmap_entry(self, program, bitmap):
+        changed_programs = set()
+        for (index, val) in enumerate(bitmap.cbuffer):
+            if val == 0x0:
+                continue
+            overwrite, old_program = self.__should_overwrite_old_entry(index, val, program)
+            if overwrite:
+                self.bitmap_index_to_fav_program[index] = (program, val)
+                program.add_fav_bit(index)
+                changed_programs.add(program)
+                if old_program:
+                    old_program.remove_fav_bit(index)
+                    changed_programs.add(old_program)
+                    self.statistics.event_node_remove_fav_bit(old_program)
+    

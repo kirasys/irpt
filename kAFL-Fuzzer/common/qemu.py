@@ -6,7 +6,7 @@
 """
 Launch Qemu VMs and execute test inputs produced by kAFL-Fuzzer.
 """
-
+import sys
 import ctypes
 import mmap
 import os
@@ -18,14 +18,15 @@ import subprocess
 import time
 import traceback
 from socket import error as socket_error
-import sys
 
 import common.color
 import common.qemu_protocol as qemu_protocol
+
+from wdm.irp import IRP
 from common.debug import log_qemu
 from common.execution_result import ExecutionResult
 from common.util import read_binary_file, atomic_write, print_fail, print_warning, strdump, p32
-from wdm.irp import IRP
+from debug.log import log
 
 def to_string_32(value):
     return [(value >> 24) & 0xff,
@@ -82,7 +83,7 @@ class qemu:
 
         # TODO: list append should work better than string concatenation, especially for str.replace() and later popen()
         self.cmd += " -serial file:" + self.qemu_serial_log + \
-                    " -enable-kvm " \
+                    " -enable-kvm -nographic " \
                     " -m " + str(config.argument_values['mem']) + \
                     " -net none " + \
                     " -chardev socket,server,nowait,path=" + self.control_filename + \
@@ -170,6 +171,9 @@ class qemu:
                 self.cmd[c] = "\"nokaslr oops=panic nopti mitigations=off\""
                 break
             c += 1
+        
+        # count of send_irp execution.
+        self.count = 0
 
     def __debug_hprintf(self):
         try:
@@ -459,7 +463,7 @@ class qemu:
         self.process = subprocess.Popen(self.cmd,
                 preexec_fn=os.setpgrp,
                 stdin=subprocess.PIPE,
-                #stdout=subprocess.PIPE,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
 
         try:
@@ -738,8 +742,10 @@ class qemu:
 
     def send_irp(self, irp, retry=0):
         try:
-            #print(hex(irp.IoControlCode), hex(irp.InBufferLength), bytes(irp.InBuffer[:0x10]))
-            #sys.stdout.write("\033[F")
+            if self.count == 1000:
+                self.count = 0
+                log(f"iocode: {hex(irp.IoControlCode)}, payload: {bytes(irp.InBuffer[:0x10])}.., len: {hex(irp.InBufferLength)}", label='IRP')
+            self.count += 1
             self.set_payload(irp)
             return self.send_payload()
         except (ValueError, BrokenPipeError):
