@@ -75,8 +75,6 @@ class Process:
         if is_new_input:
             new_program = self.cur_program.clone_with_irps(self.cur_program.irps[:index+1])
             self.maybe_insert_program(new_program, exec_res)
-        else:
-            log_process("Crashing input found (%s), but not new (discarding)" % (exec_res.exit_reason))
 
         # restart Qemu on crash
         if exec_res.is_crash():
@@ -157,14 +155,14 @@ class Process:
     def loop(self):
         if not self.q.start():
             return
-
+            
         # Import seeds.
         seed_directory = self.config.argument_values['seed_dir']
         if len(os.listdir(seed_directory)):
             for (directory, _, files) in os.walk(seed_directory):
                 for f in files:
                     path = os.path.join(directory, f)
-                    print("Importing seed (%s)" % path)
+                    log("Importing seed (%s)" % path)
                     if os.path.exists(path):
                         program = Program()
                         program.load(path)

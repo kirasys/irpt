@@ -42,7 +42,7 @@ def reproduction_cmd(args):
         cmd += "-revert "
 
     os.system(cmd)
-    os.system('kill -9 `pgrep qemu`')
+    os.system('kill -9 `pgrep qemu` 2>/dev/null')
 
 def fuzz_cmd(args):
     cmd = BASIC_CMD % ('kafl_fuzz', args['driver'], args['interface'], args['vm'])

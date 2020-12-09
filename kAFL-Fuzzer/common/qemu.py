@@ -539,7 +539,7 @@ class qemu:
         self.shutdown()
         # TODO: Need to wait here or else the next instance dies in set_payload()
         # Perhaps Qemu should do proper munmap()/close() on exit?
-        time.sleep(0.1)
+        os.system('kill -9 `pgrep qemu` 2>/dev/null')
         return self.start()
 
     # Reset Qemu after crash/timeout - can skip if target has own forkserver
@@ -701,12 +701,18 @@ class qemu:
     def submit_sampling_run(self):
         self.__debug_send(qemu_protocol.COMMIT_FILTER)
 
-    def turn_on_coverage_map(self):
-        self.__debug_send(qemu_protocol.COVERAGE_ON)
+    def turn_on_coverage_map(self, retry=0):
+        try:
+            self.__debug_send(qemu_protocol.COVERAGE_ON)
+        except BrokenPipeError:
+            time.sleep(0.2)
+            os.system('kill -9 `pgrep qemu` 2>/dev/null')
+            self.reload()
+            self.__debug_send(qemu_protocol.COVERAGE_ON)
     
-    def turn_off_coverage_map(self):
+    def turn_off_coverage_map(self, retry=0):
         self.__debug_send(qemu_protocol.COVERAGE_OFF)
-
+    
     def execute_in_trace_mode(self, timeout_detection):
         log_qemu("Performing trace iteration...", self.qemu_id)
         exec_res = None
