@@ -97,6 +97,8 @@ class ProcessStatistics:
         self.data["bytes_in_bitmap"] += len(program.get_new_bytes())
         self.data["max_level"] = max(program.get_level(), self.data["max_level"])
 
+    
+
     def event_findings(self, exit_reason):
         self.data["findings"][exit_reason] += 1
 

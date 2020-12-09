@@ -1,5 +1,6 @@
 
 import os
+import sys
 from   pprint import pformat
 import json
 import mmh3
@@ -20,6 +21,7 @@ from wdm.program import Program
 from wdm.optimizer import Optimizer
 from wdm.database import Database
 from wdm.crasher import Crasher
+from wdm.interface import interface_manager
 from fuzzer.statistics import ProcessStatistics
 from fuzzer.bitmap import BitmapStorage
 from fuzzer.technique import bitflip, arithmetic, interesting_values, rand_values
@@ -99,11 +101,19 @@ class Process:
         self.q.reload_driver()
 
         for i in range(len(self.cur_program.irps)):
-            if self.execute_irp(i):
-                return True
+            self.execute_irp(i)
 
     def execute_deterministic(self, program):
         self.__set_current_program(program)
+        print("---- Current fuzzing state (%d'th program)-----" % self.cur_program.get_id())
+        print("[>] exec speed     : %ds" % (self.statistics.data["total_execs"] / self.statistics.data["run_time"]))
+        print("[>] total paths    : %d" % self.statistics.data["paths_total"])
+        print("[>] unique program : %d" % self.statistics.data["unique_programs"])
+        print("[>] unique crash   : %d" % self.statistics.data["unique_findings"]["crash"])
+        print("[>] normal crash   : %d" % self.statistics.data["findings"]["crash"])
+        print("[>] timeout        : %d" % self.statistics.data["findings"]["timeout"])
+        print("")
+        self.database.dump()
 
         irps = self.cur_program.irps
         for index in range(len(irps)):
@@ -169,6 +179,7 @@ class Process:
                         # If a crash(timeout) occurs, retry execution.
                         while True:
                             if not self.execute(program):
+                                log("[-] Imported seed crashed!")
                                 break
                             self.crasher.clear()
                             self.optimizer.clear()
@@ -190,12 +201,16 @@ class Process:
                 log_process("[+] New interesting program found.")
                 self.database.add(new_programs)
 
+        log("[+] Unique program count : %d" % len(self.database.unique_programs))
+        if interface_manager.count() != len(self.database.unique_programs):
+            log("[!] Maybe some IOCTL code were ignored")
+
         while True:
             log("[+] starting new cycle ..")
             program = self.database.get_next()
             programCopyed = copy.deepcopy(program)
 
-            for _ in range(5):    
+            for _ in range(5):
                 method = programCopyed.mutate(corpus_programs=self.database.getAll())
                 self.statistics.event_method(method, programCopyed.program_struct["id"])
 
@@ -217,6 +232,9 @@ class Process:
                 
                 # crash reproduction
                 self.crasher.reproduce()
+
+                # synchronization
+                program.program_struct["exec_count"] = programCopyed.program_struct["exec_count"]
                 
     def shutdown(self):
         self.q.shutdown()

@@ -52,12 +52,12 @@ class Program:
 
     def dump(self, label="PROGRAM"):
         log(label)
+        log(f"ProgramID: {self.get_id()}", label="PROGRAM")
         log(f"Exec count: {self.get_exec_count()}", label="PROGRAM")
         log(f"Complexity: {self.get_level()}", label="PROGRAM")
-        log(f"ProgramID: {self.get_id()}", label="PROGRAM")
 
         for irp in self.irps:
-            log("IoControlCode: %x InBuffer: %s" % (irp.IoControlCode, bytes(irp.InBuffer[:0xff])), label='PROGRAM')
+            log("IoControlCode: %x InBuffer: %s" % (irp.IoControlCode, bytes(irp.InBuffer[:0x10])), label='PROGRAM')
 
     def load(self, f):
         i = 0
@@ -322,7 +322,7 @@ class Program:
     
     def set_exec_count(self, val):
         self.program_struct["exec_count"] = val
-    
+
     def increment_exec_count(self):
         self.program_struct["exec_count"] += 1
 

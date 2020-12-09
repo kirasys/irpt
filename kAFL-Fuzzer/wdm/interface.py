@@ -20,7 +20,10 @@ class Interface:
             outbuffer_ranges = list(map(to_range, constraint["OutBufferLength"]))
 
             self.interface[iocode] = {"InBufferRange": inbuffer_ranges, "OutBufferRange": outbuffer_ranges}
-        
+    
+    def count(self):
+        return len(self.get_all_code())
+
     def get_all_code(self):
         return self.interface.keys()
     

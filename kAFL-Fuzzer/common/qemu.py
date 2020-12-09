@@ -171,9 +171,6 @@ class qemu:
                 self.cmd[c] = "\"nokaslr oops=panic nopti mitigations=off\""
                 break
             c += 1
-        
-        # count of send_irp execution.
-        self.count = 0
 
         # select a reload mode.
         self.reload_driver = self._revert_driver if config.argument_values['revert'] else self._reload_driver
@@ -750,10 +747,7 @@ class qemu:
 
     def send_irp(self, irp, retry=0):
         try:
-            if self.count == 1000:
-                self.count = 0
-                log(f"iocode: {hex(irp.IoControlCode)}, payload: {bytes(irp.InBuffer[:0x10])}.., len: {hex(irp.InBufferLength)}", label='IRP')
-            self.count += 1
+            #log(f"iocode: {hex(irp.IoControlCode)}, payload: {bytes(irp.InBuffer[:0x10])}.., len: {hex(irp.InBufferLength)}", label='IRP')
             self.set_payload(irp)
             return self.send_payload()
         except (ValueError, BrokenPipeError):

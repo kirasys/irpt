@@ -4,7 +4,7 @@
 LPCSTR SVCNAME = "target_driver";
 LPCSTR DRIVERNAME = "target_driver.sys";
 LPCSTR DRIVERPATH = "C:\\target_driver.sys";
-LPCSTR DRIVER_SVCPATH = "\\\\.\\360Camera";
+LPCSTR DRIVER_SVCPATH = "\\\\.\\Hitman Pro 37";
 
 #define ARRAY_SIZE 1024
 

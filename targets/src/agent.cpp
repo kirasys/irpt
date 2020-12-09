@@ -36,7 +36,7 @@ char OutBuffer[0x10000];
 
 int main(int argc, char** argv){
     hprintf("[+] Starting... %s", argv[0]);
-	/* Patching ioctl filter */
+	/* Patching ioctl filter
 	UINT64 psGetCurrentProcessId = 0x0;
     UINT64 psGetCurrentThreadId = 0x0;
 
@@ -47,6 +47,7 @@ int main(int argc, char** argv){
 	psGetCurrentThreadId = resolve_KernelFunction(sPsGetCurrentThreadId);
 	*(uint32_t*)(ioctl_filter_bypass + 1) = GetCurrentThreadId();
 	kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, psGetCurrentThreadId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
+	*/
 
     hprintf("[+] Allocating buffer for kAFL_payload struct");
     kAFL_payload* payload_buffer = (kAFL_payload*)VirtualAlloc(0, PAYLOAD_SIZE + 0x1000, MEM_COMMIT, PAGE_READWRITE);

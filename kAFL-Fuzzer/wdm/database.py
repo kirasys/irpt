@@ -15,7 +15,7 @@ def get_new_coverage_counts(bitmap, new_bitmap):
             count += 1
     return count
 
-COMPLEX_DOWN_THRESHOLD = 100
+REMOVE_THRESHOLD = 1000
 
 class Database:
     def __init__(self, statistics):
@@ -63,9 +63,11 @@ class Database:
         total_score = 0
         self.probability_map = []
         for uniq_program in self.unique_programs:
-            score  = uniq_program.get_level()
-            score += len(set(uniq_program.coverage_map))
-            score -= uniq_program.get_exec_count() // COMPLEX_DOWN_THRESHOLD
+            score  = REMOVE_THRESHOLD
+            score += uniq_program.get_level() * 10
+            score += len(set(uniq_program.coverage_map)) * 2
+            score -= uniq_program.get_exec_count() * 10
+            score = max(score, 1)
 
             total_score += score
             self.probability_map.append(score)

@@ -48,14 +48,33 @@ class Optimizer:
                 continue
             program.bitmap = list(old_array)
             program.coverage_map = new_res.coverage_to_array()
-            
-            # program optimation
             program.set_exec_count(0)
+
+            # Program optimation
+            # Remove irps which is not affecting coverage.
+            while len(program.irps) > 1:
+                exec_res = self.__execute(program.irps[len(program.irps)//2:])
+                if not exec_res:
+                    continue
+
+                new = False
+                for index in new_bytes.keys():
+                    if exec_res.cbuffer[index] != new_bytes[index]:
+                        new = True
+                        break
+                if not new:
+                    for index in new_bits.keys():
+                        if exec_res.cbuffer[index] != new_bits[index]:
+                            new = True
+                            break
+                if new:
+                    break
+                program.irps = program.irps[len(program.irps)//2:]
+
             if len(program.irps) <= 1:
                 optimized.append(program)
                 continue
-
-            # Remove irps not affecting coverage.
+            
             i = 0
             exec_res = None
             while i < len(program.irps) and len(program.irps) > 1:
@@ -63,17 +82,17 @@ class Optimizer:
                 if not exec_res:
                     continue
                 
-                valid = False
+                new = False
                 for index in new_bytes.keys():
                     if exec_res.cbuffer[index] != new_bytes[index]:
-                        valid = True
+                        new = True
                         break
-                if not valid:
+                if not new:
                     for index in new_bits.keys():
                         if exec_res.cbuffer[index] != new_bits[index]:
-                            valid = True
+                            new = True
                             break
-                if not valid:
+                if not new:
                     del program.irps[i]
                 else:
                     i += 1
