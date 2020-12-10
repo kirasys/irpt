@@ -88,7 +88,7 @@ def mutate_seq_64_bit_rand8bit(self, index):
     for i in range(start, end - 7):
         orig = data[i:i+8]
 
-        for _ in range(16):
+        for _ in range(32):
             num1 = in_range_64(rand.Intn(0xff))
             num2 = swap_64(num1)
 
@@ -108,7 +108,7 @@ def mutate_inbuffer_length(self, index):
     irp = self.cur_program.irps[index]
     orig = irp.InBuffer[:]
 
-    for _ in range(32):
+    for _ in range(16):
         irp.InBuffer = orig[:rand.Index(irp.InBufferLength)]
         if interface_manager.satisfiable(irp):
             if self.execute_irp(index):

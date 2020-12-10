@@ -41,11 +41,11 @@ class Crasher:
                             unique = False
                         self.crash_map[address] = True
                     
-                    if unique:
+                    if unique and not exec_res.is_timeout():
                         program.save_to_file('unique_crash')
                         self.statistics.event_unique_findings(exec_res.exit_reason)
                     else:
-                        program.save_to_file('crash')
+                        program.save_to_file(exec_res.exit_reason)
                         self.statistics.event_findings(exec_res.exit_reason)
                     break
         self.q.turn_off_coverage_map()
