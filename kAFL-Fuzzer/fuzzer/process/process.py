@@ -263,7 +263,7 @@ class Process:
 
             # synchronization
             program.program_struct["exec_count"] = programCopyed.program_struct["exec_count"]
-            program.program_struct["dirty"] = programCopyed.program_struct["exec_count"]
+            program.program_struct["dirty"] = programCopyed.program_struct["dirty"]
             
             # Update update_probability_map of corpus database.
             self.database.update_probability_map()
