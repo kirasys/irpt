@@ -180,6 +180,7 @@ class Process:
                 return
             if havoc.mutate_seq_32_bit_rand32bit(self, index):
                 return
+
             if havoc.mutate_seq_64_bit_rand8bit(self, index):
                 return
             
@@ -235,7 +236,7 @@ class Process:
             program = self.database.get_next()
             programCopyed = copy.deepcopy(program)
 
-            for _ in range(5):
+            for _ in range(1):
                 method = programCopyed.mutate(corpus_programs=self.database.getAll())
                 self.statistics.event_method(method, programCopyed.program_struct["id"])
 

@@ -76,6 +76,39 @@ def mutate_seq_32_bit_rand32bit(self, index):
 
         data[i:i+4] = orig
 
+def mutate_seq_32_bit_rand16bit(self, index):
+    data = self.cur_program.irps[index].InBuffer
+
+    # limit interesting up to MAX_RAND_VALUES_SIZE.
+    start, end = 0, self.cur_program.irps[index].InBufferLength
+    if end > MAX_RAND_VALUES_SIZE:
+        start = rand.Intn(((end - 1) // MAX_RAND_VALUES_SIZE)) * MAX_RAND_VALUES_SIZE
+        end = min(end, start + MAX_RAND_VALUES_SIZE)
+
+    for i in range(start, end - 3):
+        orig = data[i:i+4]
+        oval = (orig[3] << 24) | (orig[2] << 16) | (orig[1] << 8) | orig[0]
+
+        for _ in range(32):
+            num1 = in_range_32((rand.Intn(0xff) << 8) | rand.Intn(0xff))
+            num2 = swap_32(num1)
+
+            if (is_not_bitflip(oval ^ num1) and
+                is_not_arithmetic(oval, num1, 4) and
+                is_not_interesting(oval, num1, 4, 1)):
+                    data[i:i+4] = [num1 & 0xff, (num1 >> 8)&0xff, (num1 >> 16)&0xff, (num1 >> 24)&0xff]
+                    if self.execute_irp(index):
+                        return True
+            
+            if (is_not_bitflip(oval ^ num2) and
+                is_not_arithmetic(oval, num2, 4) and
+                is_not_interesting(oval, num2, 4, 1)):
+                    data[i:i+4] = [num2 & 0xff, (num2 >> 8)&0xff, (num2 >> 16)&0xff, (num2 >> 24)&0xff]
+                    if self.execute_irp(index):
+                        return True
+
+        data[i:i+4] = orig
+
 def mutate_seq_64_bit_rand8bit(self, index):
     data = self.cur_program.irps[index].InBuffer
 

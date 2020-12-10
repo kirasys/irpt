@@ -113,10 +113,10 @@ class Program:
     def mutate(self, corpus_programs):
         method = "AFLdetermin"
 
-        if rand.oneOf(10) and self.__mutateArg():
-            method = "mutateArg"
+        #if rand.oneOf(10) and self.__mutateArg():
+        #    method = "mutateArg"
 
-        if rand.oneOf(10) and self.__splice(corpus_programs):
+        if rand.oneOf(5) and self.__splice(corpus_programs):
             method = "splice"
         elif rand.oneOf(10) and self.__swapIRP():
             method = "swapIRP"
