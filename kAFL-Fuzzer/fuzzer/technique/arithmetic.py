@@ -11,9 +11,9 @@ from fuzzer.technique.helper import *
 from common import rand
 from binascii import hexlify
 
-MAX_ARITHMETIC_SIZE = 0x100
+MAX_ARITHMETIC_SIZE = 0x200
 
-def mutate_seq_8_bit_arithmetic(index, self):
+def mutate_seq_8_bit_arithmetic(self, index):
     data = self.cur_program.irps[index].InBuffer
     
     # limit arithmethic up to MAX_ARITHMETIC_SIZE.
@@ -41,7 +41,7 @@ def mutate_seq_8_bit_arithmetic(index, self):
                     return True
         data[i] = orig
 
-def mutate_seq_16_bit_arithmetic(index, self):
+def mutate_seq_16_bit_arithmetic(self, index):
     data = self.cur_program.irps[index].InBuffer
 
     # limit arithmethic up to MAX_ARITHMETIC_SIZE.
@@ -85,7 +85,7 @@ def mutate_seq_16_bit_arithmetic(index, self):
         data[i:i+2] = orig
 
 
-def mutate_seq_32_bit_arithmetic(index, self):
+def mutate_seq_32_bit_arithmetic(self, index):
     data = self.cur_program.irps[index].InBuffer
 
     # limit arithmethic up to MAX_ARITHMETIC_SIZE.

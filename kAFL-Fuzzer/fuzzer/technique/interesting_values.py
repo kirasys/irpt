@@ -11,9 +11,7 @@ from fuzzer.technique.helper import *
 from common import rand
 from binascii import hexlify
 
-MAX_INTERESTING_SIZE = 0x100
-
-def mutate_seq_8_bit_interesting(index, self):
+def mutate_seq_8_bit_interesting(self, index):
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_INTERESTING_SIZE.
@@ -36,7 +34,7 @@ def mutate_seq_8_bit_interesting(index, self):
         data[i] = orig
 
 
-def mutate_seq_16_bit_interesting(index, self):
+def mutate_seq_16_bit_interesting(self, index):
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_INTERESTING_SIZE.
@@ -71,7 +69,7 @@ def mutate_seq_16_bit_interesting(index, self):
         data[i:i+2] = orig
 
 
-def mutate_seq_32_bit_interesting(index, self):
+def mutate_seq_32_bit_interesting(self, index):
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_INTERESTING_SIZE.

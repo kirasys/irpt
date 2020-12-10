@@ -578,6 +578,8 @@ class MonitorDrawer:
         self.inf.print_info_line([
             (50, "       splice", f"{pnum(d.get_yield('splice'))}/{pnum(d.get_stage('splice'))}"),
             (17, "   reload", pnum(d.stats["num_reload"]))])
+        self.inf.print_info_line([
+            (50, "    removeIRP", f"{pnum(d.get_yield('removeIRP'))}/{pnum(d.get_stage('removeIRP'))}")])
         
         self.inf.print_last_two_line(d.cpu_used())
 

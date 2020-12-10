@@ -24,7 +24,7 @@ from wdm.crasher import Crasher
 from wdm.interface import interface_manager
 from fuzzer.statistics import ProcessStatistics
 from fuzzer.bitmap import BitmapStorage
-from fuzzer.technique import bitflip, arithmetic, interesting_values, rand_values
+from fuzzer.technique import bitflip, arithmetic, interesting_values, havoc
 
 u32 = lambda x : struct.unpack('<I', x)[0]
 
@@ -51,6 +51,18 @@ class Process:
         self.optimizer = Optimizer(self.q, self.statistics)
         self.crasher = Crasher(self.q, self.statistics)
         self.database = Database(self.statistics) # load interface
+
+    def log_current_state(self, label):
+        print("---- Current fuzzing state (%d'th program)-----" % self.cur_program.get_id())
+        self.database.dump()
+        print("[>] state          : %s" % label)
+        print("[>] exec speed     : %ds" % (self.statistics.data["total_execs"] / self.statistics.data["run_time"]))
+        print("[>] total paths    : %d" % self.statistics.data["paths_total"])
+        print("[>] unique program : %d" % self.statistics.data["unique_programs"])
+        print("[>] unique crash   : %d" % self.statistics.data["unique_findings"]["crash"])
+        print("[>] normal crash   : %d" % self.statistics.data["findings"]["crash"])
+        print("[>] timeout        : %d" % self.statistics.data["findings"]["timeout"])
+        
 
     def maybe_insert_program(self, program, exec_res):
         bitmap_array = exec_res.copy_to_array()
@@ -105,15 +117,8 @@ class Process:
 
     def execute_deterministic(self, program):
         self.__set_current_program(program)
-        print("---- Current fuzzing state (%d'th program)-----" % self.cur_program.get_id())
-        print("[>] exec speed     : %ds" % (self.statistics.data["total_execs"] / self.statistics.data["run_time"]))
-        print("[>] total paths    : %d" % self.statistics.data["paths_total"])
-        print("[>] unique program : %d" % self.statistics.data["unique_programs"])
-        print("[>] unique crash   : %d" % self.statistics.data["unique_findings"]["crash"])
-        print("[>] normal crash   : %d" % self.statistics.data["findings"]["crash"])
-        print("[>] timeout        : %d" % self.statistics.data["findings"]["timeout"])
-        print("")
-        self.database.dump()
+        self.cur_program.set_dirty(False)
+        self.log_current_state("deterministic")
 
         irps = self.cur_program.irps
         for index in range(len(irps)):
@@ -125,41 +130,61 @@ class Process:
 
             # deterministic logic
             # Walking bitfilps
-            if bitflip.mutate_seq_walking_bits(index, self): 
+            if bitflip.mutate_seq_walking_bits(self, index): 
                 return
-            if bitflip.mutate_seq_two_walking_bits(index, self): 
+            if bitflip.mutate_seq_two_walking_bits(self, index): 
                 return
-            if bitflip.mutate_seq_four_walking_bits(index, self): 
+            if bitflip.mutate_seq_four_walking_bits(self, index): 
                 return
 
             # Walking byte sets
-            if bitflip.mutate_seq_walking_byte(index, self):
+            if bitflip.mutate_seq_walking_byte(self, index):
                 return
-            if bitflip.mutate_seq_two_walking_bytes(index, self):
+            if bitflip.mutate_seq_two_walking_bytes(self, index):
                 return
-            if bitflip.mutate_seq_four_walking_bytes(index, self):
+            if bitflip.mutate_seq_four_walking_bytes(self, index):
                 return
 
             # Arithmetic mutations
-            if arithmetic.mutate_seq_8_bit_arithmetic(index, self):
+            if arithmetic.mutate_seq_8_bit_arithmetic(self, index):
                 return
-            if arithmetic.mutate_seq_16_bit_arithmetic(index, self):
+            if arithmetic.mutate_seq_16_bit_arithmetic(self, index):
                 return
-            if arithmetic.mutate_seq_32_bit_arithmetic(index, self):
+            if arithmetic.mutate_seq_32_bit_arithmetic(self, index):
                 return
 
             # Interesting value mutations
-            if interesting_values.mutate_seq_8_bit_interesting(index, self):
+            if interesting_values.mutate_seq_8_bit_interesting(self, index):
                 return
-            if interesting_values.mutate_seq_16_bit_interesting(index, self):
+            if interesting_values.mutate_seq_16_bit_interesting(self, index):
                 return
-            if interesting_values.mutate_seq_32_bit_interesting(index, self):
+            if interesting_values.mutate_seq_32_bit_interesting(self, index):
+                return
+    
+    def execute_havoc(self, program):
+        self.__set_current_program(program)
+        self.log_current_state("havoc")
+
+        irps = self.cur_program.irps
+        for index in range(len(irps)):
+            self.q.reload_driver()
+            for j in range(index):
+                exec_res = self.q.send_irp(irps[j])
+                if exec_res.is_crash():
+                    return
+
+            # Random value mutations
+            if havoc.mutate_seq_8_bit_rand8bit(self, index):
+                return
+            if havoc.mutate_seq_16_bit_rand16bit(self, index):
+                return
+            if havoc.mutate_seq_32_bit_rand32bit(self, index):
+                return
+            if havoc.mutate_seq_64_bit_rand8bit(self, index):
                 return
             
-            # Random value mutations
-            if rand_values.mutate_seq_8_bit_rand8bit(index, self):
-                return
-            if rand_values.mutate_seq_64_bit_rand8bit(index, self):
+            # InBufferLength mutation
+            if havoc.mutate_inbuffer_length(self, index):
                 return
     
     def loop(self):
@@ -215,7 +240,10 @@ class Process:
                 self.statistics.event_method(method, programCopyed.program_struct["id"])
 
                 # Execute
-                self.execute_deterministic(programCopyed)
+                if programCopyed.get_dirty():
+                    self.execute_deterministic(programCopyed)
+                else:
+                    self.execute_havoc(programCopyed)
 
                 # Get a new interesting corpus
                 while self.optimizer.optimizable():
@@ -233,9 +261,13 @@ class Process:
                 # crash reproduction
                 self.crasher.reproduce()
 
-                # synchronization
-                program.program_struct["exec_count"] = programCopyed.program_struct["exec_count"]
-                
+            # synchronization
+            program.program_struct["exec_count"] = programCopyed.program_struct["exec_count"]
+            program.program_struct["dirty"] = programCopyed.program_struct["exec_count"]
+            
+            # Update update_probability_map of corpus database.
+            self.database.update_probability_map()
+
     def shutdown(self):
         self.q.shutdown()
 

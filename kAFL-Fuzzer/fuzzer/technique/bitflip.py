@@ -7,6 +7,7 @@
 AFL-style bitflip mutations (deterministic stage).
 """
 from common import rand
+from fuzzer.technique.helper import MAX_WALKING_BITS_SIZE
 
 def walking_bits_execs(data, skip_null=False, effector_map=None):
     execs=0
@@ -21,9 +22,7 @@ def walking_bits_execs(data, skip_null=False, effector_map=None):
 
     return execs
 
-MAX_WALKING_BITS_SIZE = 0x200
-
-def mutate_seq_walking_bits(index, self):
+def mutate_seq_walking_bits(self, index):
     data = self.cur_program.irps[index].InBuffer
 
     # limit walking bits up to MAX_WALKING_BITS_SIZE.
@@ -39,7 +38,7 @@ def mutate_seq_walking_bits(index, self):
         data[i // 8] ^= (0x80 >> (i % 8))
 
 
-def mutate_seq_two_walking_bits(index, self):
+def mutate_seq_two_walking_bits(self, index):
     data = self.cur_program.irps[index].InBuffer
 
     # limit walking bits up to MAX_WALKING_BITS_SIZE.
@@ -57,7 +56,7 @@ def mutate_seq_two_walking_bits(index, self):
         data[(i + 1) // 8] ^= (0x80 >> ((i + 1) % 8))
 
 
-def mutate_seq_four_walking_bits(index, self):
+def mutate_seq_four_walking_bits(self, index):
     data = self.cur_program.irps[index].InBuffer
     
     # limit walking bits up to MAX_WALKING_BITS_SIZE.
@@ -79,7 +78,7 @@ def mutate_seq_four_walking_bits(index, self):
         data[(i + 3) // 8] ^= (0x80 >> ((i + 3) % 8))
 
 
-def mutate_seq_walking_byte(index, self):
+def mutate_seq_walking_byte(self, index):
     data = self.cur_program.irps[index].InBuffer
     for i in range(len(data)):
         data[i] ^= 0xFF
@@ -88,7 +87,7 @@ def mutate_seq_walking_byte(index, self):
         data[i] ^= 0xFF
 
 
-def mutate_seq_two_walking_bytes(index, self):
+def mutate_seq_two_walking_bytes(self, index):
     data = self.cur_program.irps[index].InBuffer
 
     if len(data) <= 1:
@@ -103,7 +102,7 @@ def mutate_seq_two_walking_bytes(index, self):
         data[i+1] ^= 0xFF
 
 
-def mutate_seq_four_walking_bytes(index, self):
+def mutate_seq_four_walking_bytes(self, index):
     data = self.cur_program.irps[index].InBuffer
     if len(data) <= 3:
         return

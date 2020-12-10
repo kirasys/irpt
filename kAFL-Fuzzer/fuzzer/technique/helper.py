@@ -14,6 +14,10 @@ import os
 import struct
 from ctypes import c_uint8, c_uint16, c_uint32
 
+MAX_WALKING_BITS_SIZE = 0x1000
+MAX_INTERESTING_SIZE = 0x1000
+MAX_RAND_VALUES_SIZE = 0x1000
+
 # TODO Align with kafl.ini payload_shm_size and other instances of payload max size!
 KAFL_MAX_FILE = 128 << 10
 
@@ -32,7 +36,6 @@ AFL_HAVOC_STACK_POW2 = 7
 interesting_8_Bit = [-128, -1, 0, 1, 16, 32, 64, 100, 127]
 interesting_16_Bit = interesting_8_Bit + [-32768, -129, 128, 255, 256, 512, 1000, 1024, 4096, 32767]
 interesting_32_Bit = interesting_16_Bit + [-2147483648, -100663046, -32769, 32768, 65535, 65536, 100663045, 2147483647, 4294967295]
-
 
 # Todo
 def AFL_choose_block_len(limit):

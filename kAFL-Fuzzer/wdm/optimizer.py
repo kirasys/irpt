@@ -57,17 +57,17 @@ class Optimizer:
                 if not exec_res:
                     continue
 
-                new = False
+                dependent = False
                 for index in new_bytes.keys():
                     if exec_res.cbuffer[index] != new_bytes[index]:
-                        new = True
+                        dependent = True
                         break
-                if not new:
+                if not dependent:
                     for index in new_bits.keys():
                         if exec_res.cbuffer[index] != new_bits[index]:
-                            new = True
+                            dependent = True
                             break
-                if new:
+                if dependent:
                     break
                 program.irps = program.irps[len(program.irps)//2:]
 
@@ -82,24 +82,23 @@ class Optimizer:
                 if not exec_res:
                     continue
                 
-                new = False
+                dependent = False
                 for index in new_bytes.keys():
                     if exec_res.cbuffer[index] != new_bytes[index]:
-                        new = True
+                        dependent = True
                         break
-                if not new:
+                if not dependent:
                     for index in new_bits.keys():
                         if exec_res.cbuffer[index] != new_bits[index]:
-                            new = True
+                            dependent = True
                             break
-                if not new:
+                if not dependent:
                     del program.irps[i]
                 else:
                     i += 1
 
             if len(program.irps):
                 optimized.append(copy.deepcopy(program))
-
                 program.clear_fav_bits()
                 self.__update_best_input_for_bitmap_entry(program, exec_res)  
 

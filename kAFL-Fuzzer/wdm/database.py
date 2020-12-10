@@ -36,6 +36,23 @@ class Database:
     def getAll(self):
         return self.programs
 
+    def update_probability_map(self):
+        # Calculate the probabbility map.
+        total_score = 0
+        self.probability_map = []
+        for uniq_program in self.unique_programs:
+            score  = REMOVE_THRESHOLD
+            score += uniq_program.get_level() * 20
+            score += len(set(uniq_program.coverage_map)) * 2
+            score -= uniq_program.get_exec_count() * 10
+            score = max(score, 1)
+
+            total_score += score
+            self.probability_map.append(score)
+        
+        for i, uniq_program in enumerate(self.unique_programs):
+            self.probability_map[i] /= total_score
+
     def __unique_selection(self, new_programs):
         if len(self.programs) <= 0:
             return
@@ -58,22 +75,8 @@ class Database:
                     continue
                 i += 1
             self.unique_programs.append(new_program)
-        
-        # Calculate the probabbility map.
-        total_score = 0
-        self.probability_map = []
-        for uniq_program in self.unique_programs:
-            score  = REMOVE_THRESHOLD
-            score += uniq_program.get_level() * 10
-            score += len(set(uniq_program.coverage_map)) * 2
-            score -= uniq_program.get_exec_count() * 10
-            score = max(score, 1)
 
-            total_score += score
-            self.probability_map.append(score)
-        
-        for i, uniq_program in enumerate(self.unique_programs):
-            self.probability_map[i] /= total_score
+        self.update_probability_map()
 
     def get_next(self):
         if len(self.programs) == 0: # generation

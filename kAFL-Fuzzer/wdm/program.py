@@ -34,7 +34,7 @@ class Program:
                 'new_bits':{}, 
                 'fav_bytes':{},
                 'fav_bits':{},
-                'fav_factor': 0
+                'dirty': True
             }
         else:
             program_struct = copy.deepcopy(program_struct)
@@ -113,14 +113,17 @@ class Program:
     def mutate(self, corpus_programs):
         method = "AFLdetermin"
 
+        if rand.oneOf(10) and self.__mutateArg():
+            method = "mutateArg"
+
         if rand.oneOf(10) and self.__splice(corpus_programs):
             method = "splice"
-        elif rand.oneOf(10) and self.__insertIRP(corpus_programs):
-            method = "insertIRP"
         elif rand.oneOf(10) and self.__swapIRP():
             method = "swapIRP"
-        elif rand.oneOf(10) and self.__mutateArg():
-            method = "mutateArg"
+        elif rand.oneOf(10) and self.__insertIRP(corpus_programs):
+            method = "insertIRP"
+        elif rand.oneOf(20) and self.__removeIRP():
+            method = "removeIRP"
         
         self.set_state(method)
         return method
@@ -172,6 +175,7 @@ class Program:
         return True
 
     def __mutateArg(self):
+        self.set_dirty()
         idx = rand.Index(len(self.irps))
 
         ok = False
@@ -185,25 +189,14 @@ class Program:
 
         ok = False
         while not ok:
-            if rand.oneOf(3):
-                ok = self.__addsubBytes(irp.InBuffer)
-            elif rand.oneOf(3):
-                ok = self.__replaceBytes(irp.InBuffer)
-            else: # maybe change InBufferLength
-                if rand.oneOf(2):
-                    ok = self.__insertBytes(irp.InBuffer)
-                else:
-                    ok = self.__removeBytes(irp.InBuffer)
-
-                if not ok or not interface_manager.satisfiable(irp):
-                    continue
+            ok = self.__replaceBytes(irp.InBuffer)
         return True
 
     
     def __replaceBytes(self, buffer):
         width = 1 << rand.Index(4)
         if len(buffer) < width:
-            return False
+            width = len(buffer)
         
         pos = rand.Index(len(buffer) - width + 1)
         for i in range(width):
@@ -343,4 +336,9 @@ class Program:
     
     def set_exit_reason(self, exit_reason):
         self.program_struct["info"]["exit_reason"] = exit_reason
-    
+
+    def get_dirty(self):
+        return self.program_struct["dirty"]
+
+    def set_dirty(self, v=True):
+        self.program_struct["dirty"] = v
