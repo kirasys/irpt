@@ -53,15 +53,16 @@ class Process:
         self.database = Database(self.statistics) # load interface
 
     def log_current_state(self, label):
-        print("---- Current fuzzing state (%d'th program)-----" % self.cur_program.get_id())
+        log("---- Current fuzzing state (%d'th program)-----" % self.cur_program.get_id())
+        log("[>] state          : %s" % label)
+        log("[>] exec speed     : %ds" % (self.statistics.data["total_execs"] / self.statistics.data["run_time"]))
+        log("[>] total paths    : %d" % self.statistics.data["paths_total"])
+        log("[>] unique program : %d" % self.statistics.data["unique_programs"])
+        log("[>] unique crash   : %d" % self.statistics.data["unique_findings"]["crash"])
+        log("[>] normal crash   : %d" % self.statistics.data["findings"]["crash"])
+        log("[>] timeout        : %d\n" % self.statistics.data["findings"]["timeout"])
+        log("---- Unique Programs -----" )
         self.database.dump()
-        print("[>] state          : %s" % label)
-        print("[>] exec speed     : %ds" % (self.statistics.data["total_execs"] / self.statistics.data["run_time"]))
-        print("[>] total paths    : %d" % self.statistics.data["paths_total"])
-        print("[>] unique program : %d" % self.statistics.data["unique_programs"])
-        print("[>] unique crash   : %d" % self.statistics.data["unique_findings"]["crash"])
-        print("[>] normal crash   : %d" % self.statistics.data["findings"]["crash"])
-        print("[>] timeout        : %d" % self.statistics.data["findings"]["timeout"])
         
 
     def maybe_insert_program(self, program, exec_res):
@@ -180,12 +181,13 @@ class Process:
                 return
             if havoc.mutate_seq_32_bit_rand32bit(self, index):
                 return
-
+            if havoc.mutate_seq_32_bit_rand16bit(self, index):
+                return
             if havoc.mutate_seq_64_bit_rand8bit(self, index):
                 return
             
             # InBufferLength mutation
-            if havoc.mutate_inbuffer_length(self, index):
+            if havoc.mutate_buffer_length(self, index):
                 return
     
     def loop(self):
@@ -219,6 +221,8 @@ class Process:
         # basic coverage program.
         program = Program()
         program.generate()
+        self.execute(program)
+        program.irps = program.irps[::-1]
         self.execute(program)
         
         while self.optimizer.optimizable():

@@ -1,3 +1,5 @@
+import copy
+
 from fuzzer.technique.helper import *
 from common import rand
 from binascii import hexlify
@@ -137,14 +139,23 @@ def mutate_seq_64_bit_rand8bit(self, index):
 
         data[i:i+8] = orig
 
-def mutate_inbuffer_length(self, index):
+def mutate_buffer_length(self, index):
     irp = self.cur_program.irps[index]
-    orig = irp.InBuffer[:]
+    if irp.InBufferLength <= 1 or irp.OutBufferLength <= 1:
+        return
+    if "InBufferLength" in interface_manager[irp.IoControlCode] or \
+        "OutBufferLength" in interface_manager[irp.IoControlCode]:
+        return
+
+    orig = copy.deepcopy(irp)
 
     for _ in range(16):
-        irp.InBuffer = orig[:rand.Index(irp.InBufferLength)]
+        irp.OutBufferLength = rand.Index(orig.OutBufferLength)
+        irp.InBufferLength = rand.Index(orig.InBufferLength)
+        irp.InBuffer = orig.InBuffer[:irp.InBufferLength]
+
         if interface_manager.satisfiable(irp):
             if self.execute_irp(index):
                 return True
-
-    irp.InBuffer = orig
+                
+    self.cur_program.irps[index] = orig

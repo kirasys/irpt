@@ -31,7 +31,6 @@ class Database:
     def dump(self):
         for i, p in enumerate(self.unique_programs):
             p.dump("Unique program (%.2f%%)" % (self.probability_map[i]*100))
-        print('\n')
 
     def getAll(self):
         return self.programs
@@ -44,8 +43,8 @@ class Database:
             score  = REMOVE_THRESHOLD
             score += uniq_program.get_level() * 20
             score += len(set(uniq_program.coverage_map)) * 2
-            score -= uniq_program.get_exec_count() * 40
-            score = max(score, 0)
+            score -= uniq_program.get_exec_count() * 20
+            score  = max(score, 1)
 
             total_score += score
             self.probability_map.append(score)
