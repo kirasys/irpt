@@ -17,7 +17,7 @@ import six
 
 
 default_section = "Fuzzer"
-default_config = {"PAYLOAD_SHM_SIZE": 131072,
+default_config = {"PAYLOAD_SHM_SIZE": 196608,
                   "BITMAP_SHM_SIZE": 65536,
                   "COVERAGE_MAP_SHM_SIZE": 524288,
                   "AGENT_MAX_SIZE": 128 << 18,

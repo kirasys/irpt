@@ -13,7 +13,7 @@ from wdm.irp import IRP
 from wdm.interface import interface_manager
 
 MAX_IRP_COUNT = 100
-MAX_PAYLOAD_LEN = 0x200
+MAX_BUFFER_LEN = 0x200
 MAX_DELTA = 35
 
 class Program:
@@ -102,12 +102,12 @@ class Program:
         for rg in outbuffer_ranges:
             outlength = max(outlength, rg.stop - 1)
 
-        inlength = inlength if inlength != MAX_RANGE_VALUE-1 else MAX_PAYLOAD_LEN
-        outlength = outlength if outlength != MAX_RANGE_VALUE-1 else MAX_PAYLOAD_LEN
+        inlength = inlength if inlength != MAX_RANGE_VALUE-1 else MAX_BUFFER_LEN
+        outlength = outlength if outlength != MAX_RANGE_VALUE-1 else MAX_BUFFER_LEN
         return IRP(iocode, inlength, outlength)
 
     def generate(self):
-        for iocode in interface_manager.get_all_code():
+        for iocode in interface_manager.get_all_codes():
             self.irps.append(self.__generateIRP(iocode))
     
     def mutate(self, corpus_programs):
@@ -147,9 +147,8 @@ class Program:
         """
         if len(self.irps) >= MAX_IRP_COUNT:
             return False
-        # fetch a irp from other programs
-        program = random.choice(corpus_programs)
-        irp = copy.deepcopy(random.choice(program.irps))
+
+        irp = self.__generateIRP(random.choice(list(interface_manager.get_all_codes())))
 
         # TODO: biasd random??
         self.irps.insert(rand.Index(len(self.irps)), irp)
@@ -228,8 +227,8 @@ class Program:
             
     def __insertBytes(self, buffer):
         n = rand.Index(16) + 1
-        if len(buffer) + n > MAX_PAYLOAD_LEN:
-            n = MAX_PAYLOAD_LEN - len(buffer)
+        if len(buffer) + n > MAX_BUFFER_LEN:
+            n = MAX_BUFFER_LEN - len(buffer)
             if n == 0:
                 return False
         

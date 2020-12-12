@@ -26,9 +26,9 @@ class Interface:
                 self.interface[iocode]["OutBufferLength"] = outbuffer_ranges[0][0]
 
     def count(self):
-        return len(self.get_all_code())
+        return len(self.get_all_codes())
 
-    def get_all_code(self):
+    def get_all_codes(self):
         return self.interface.keys()
     
     def satisfiable(self, irp):

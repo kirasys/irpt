@@ -24,7 +24,7 @@ from wdm.crasher import Crasher
 from wdm.interface import interface_manager
 from fuzzer.statistics import ProcessStatistics
 from fuzzer.bitmap import BitmapStorage
-from fuzzer.technique import bitflip, arithmetic, interesting_values, havoc
+from fuzzer.technique import bitflip, arithmetic, interesting_values, havoc, oneday
 
 u32 = lambda x : struct.unpack('<I', x)[0]
 
@@ -106,24 +106,29 @@ class Process:
         return False
 
     def __set_current_program(self, program):
+        self.cur_program = program
+
+    def __set_current_program_with_count(self, program):
         program.increment_exec_count()
         self.cur_program = program
 
     def execute(self, program):
-        self.__set_current_program(program)
+        self.__set_current_program_with_count(program)
         self.q.reload_driver()
 
         for i in range(len(self.cur_program.irps)):
-            self.execute_irp(i)
+            if self.execute_irp(i):
+                return True
 
     def execute_deterministic(self, program):
-        self.__set_current_program(program)
+        self.__set_current_program_with_count(program)
         self.cur_program.set_dirty(False)
         self.log_current_state("deterministic")
 
         irps = self.cur_program.irps
         for index in range(len(irps)):
             self.q.reload_driver()
+
             for j in range(index):
                 exec_res = self.q.send_irp(irps[j])
                 if exec_res.is_crash():
@@ -137,7 +142,7 @@ class Process:
                 return
             if bitflip.mutate_seq_four_walking_bits(self, index): 
                 return
-
+            
             # Walking byte sets
             if bitflip.mutate_seq_walking_byte(self, index):
                 return
@@ -161,9 +166,14 @@ class Process:
                 return
             if interesting_values.mutate_seq_32_bit_interesting(self, index):
                 return
+
+            # Scan non paged area fault.
+            if oneday.scan_page_fault(self, index):
+                return
+        
     
     def execute_havoc(self, program):
-        self.__set_current_program(program)
+        self.__set_current_program_with_count(program)
         self.log_current_state("havoc")
 
         irps = self.cur_program.irps
@@ -189,10 +199,25 @@ class Process:
             # InBufferLength mutation
             if havoc.mutate_buffer_length(self, index):
                 return
-    
+        
+        if havoc.bruteforce_irps(self):
+            return  
+
     def loop(self):
         if not self.q.start():
             return
+        
+        # basic coverage program.
+        program = self.database.get_next()
+        self.execute(program)
+        program.irps = program.irps[::-1]
+        self.execute(program)
+
+        while self.optimizer.optimizable():
+            new_programs = self.optimizer.optimize()
+            if new_programs:
+                log_process("[+] New interesting program found.")
+            self.database.add(new_programs)
             
         # Import seeds.
         seed_directory = self.config.argument_values['seed_dir']
@@ -218,19 +243,6 @@ class Process:
                                 log_process("[+] New interesting program found.")
                                 self.database.add(new_programs)
         
-        # basic coverage program.
-        program = Program()
-        program.generate()
-        self.execute(program)
-        program.irps = program.irps[::-1]
-        self.execute(program)
-        
-        while self.optimizer.optimizable():
-            new_programs = self.optimizer.optimize()
-            if new_programs:
-                log_process("[+] New interesting program found.")
-                self.database.add(new_programs)
-
         log("[+] Unique program count : %d" % len(self.database.unique_programs))
         if interface_manager.count() != len(self.database.unique_programs):
             log("[!] Maybe some IOCTL code were ignored")
@@ -242,7 +254,7 @@ class Process:
 
             for _ in range(1):
                 method = programCopyed.mutate(corpus_programs=self.database.getAll())
-                self.statistics.event_method(method, programCopyed.program_struct["id"])
+                self.statistics.event_method(method, programCopyed.get_id())
 
                 # Execute
                 if programCopyed.get_dirty():
@@ -260,7 +272,7 @@ class Process:
                         # Start deterministic execution.
                         for prog in new_programs:
                             prog.set_state("AFLdetermin")
-                            self.statistics.event_method("AFLdetermin", prog.program_struct["id"])
+                            self.statistics.event_method("AFLdetermin", prog.get_id())
                             self.execute_deterministic(prog)
                 
                 # crash reproduction

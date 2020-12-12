@@ -28,7 +28,7 @@ def main():
         return
     
     interface_manager.load(cfg.argument_values['interface'])
-    iocode_list = list(interface_manager.get_all_code())
+    iocode_list = list(interface_manager.get_all_codes())
 
     exec_res = q.send_irp(IRP(iocode_list[0], 0, 0))
     for iocode in iocode_list[1:]:

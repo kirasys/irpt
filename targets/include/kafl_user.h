@@ -50,7 +50,7 @@
 #define HYPERCALL_KAFL_IP_FILTER			23
 #define HYPERCALL_KAFL_MEMWRITE				24
 
-#define PAYLOAD_SIZE						(128 << 6)				/* up to 8KB payloads */
+#define PAYLOAD_SIZE						0x30000					/* up to 8KB payloads */
 #define PROGRAM_SIZE						(128 << 20)				/* kAFL supports 128MB programm data */
 #define INFO_SIZE        					(128 << 10)				/* 128KB info string */
 #define TARGET_FILE							"/tmp/fuzzing_engine"	/* default target for the userspace component */

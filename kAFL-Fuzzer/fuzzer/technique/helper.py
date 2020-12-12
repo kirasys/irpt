@@ -14,9 +14,9 @@ import os
 import struct
 from ctypes import c_uint8, c_uint16, c_uint32
 
-MAX_WALKING_BITS_SIZE = 0x1000
-MAX_INTERESTING_SIZE = 0x1000
-MAX_RAND_VALUES_SIZE = 0x1000
+MAX_WALKING_BITS_SIZE = 0x2000
+MAX_INTERESTING_SIZE = 0x2000
+MAX_RAND_VALUES_SIZE = 0x2000
 
 # TODO Align with kafl.ini payload_shm_size and other instances of payload max size!
 KAFL_MAX_FILE = 128 << 10

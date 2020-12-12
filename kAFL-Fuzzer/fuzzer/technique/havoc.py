@@ -1,6 +1,8 @@
 import copy
+import random
 
 from fuzzer.technique.helper import *
+
 from common import rand
 from binascii import hexlify
 
@@ -143,6 +145,8 @@ def mutate_buffer_length(self, index):
     irp = self.cur_program.irps[index]
     if irp.InBufferLength <= 1 or irp.OutBufferLength <= 1:
         return
+    
+    # When it is unable to change the length.
     if "InBufferLength" in interface_manager[irp.IoControlCode] or \
         "OutBufferLength" in interface_manager[irp.IoControlCode]:
         return
@@ -154,8 +158,20 @@ def mutate_buffer_length(self, index):
         irp.InBufferLength = rand.Index(orig.InBufferLength)
         irp.InBuffer = orig.InBuffer[:irp.InBufferLength]
 
-        if interface_manager.satisfiable(irp):
-            if self.execute_irp(index):
-                return True
-                
+        if interface_manager.satisfiable(irp) and self.execute_irp(index):
+            return True
+
     self.cur_program.irps[index] = orig
+
+def bruteforce_irps(self):
+    orilen = len(self.cur_program.irps)
+
+    for _ in range(5):
+        for _ in range(30):
+            self.cur_program.irps += random.choice(self.database.getAll()).irps
+            
+        for i in range(len(self.cur_program.irps)):
+            if self.execute_irp(i):
+                return True
+
+        self.cur_program.irps = self.cur_program.irps[:orilen]
