@@ -127,12 +127,19 @@ class Process:
 
         irps = self.cur_program.irps
         for index in range(len(irps)):
+            if irps[index].InBufferLength == 0:
+                continue
+
             self.q.reload_driver()
 
             for j in range(index):
                 exec_res = self.q.send_irp(irps[j])
                 if exec_res.is_crash():
                     return
+            
+            # Scan non paged area fault.
+            if oneday.scan_page_fault(self, index):
+                return
 
             # deterministic logic
             # Walking bitfilps
@@ -167,17 +174,15 @@ class Process:
             if interesting_values.mutate_seq_32_bit_interesting(self, index):
                 return
 
-            # Scan non paged area fault.
-            if oneday.scan_page_fault(self, index):
-                return
-        
-    
     def execute_havoc(self, program):
         self.__set_current_program_with_count(program)
         self.log_current_state("havoc")
 
         irps = self.cur_program.irps
         for index in range(len(irps)):
+            if irps[index].InBufferLength == 0:
+                continue
+
             self.q.reload_driver()
             for j in range(index):
                 exec_res = self.q.send_irp(irps[j])
@@ -210,6 +215,7 @@ class Process:
         # basic coverage program.
         program = self.database.get_next()
         self.execute(program)
+        
         program.irps = program.irps[::-1]
         self.execute(program)
 
@@ -248,7 +254,7 @@ class Process:
             log("[!] Maybe some IOCTL code were ignored")
 
         while True:
-            log("[+] starting new cycle ..")
+            log("[+] Starting new cycle ..")
             program = self.database.get_next()
             programCopyed = copy.deepcopy(program)
 
@@ -273,7 +279,7 @@ class Process:
                         for prog in new_programs:
                             prog.set_state("AFLdetermin")
                             self.statistics.event_method("AFLdetermin", prog.get_id())
-                            self.execute_deterministic(prog)
+                            self.execute_deterministic(copy.deepcopy(prog))
                 
                 # crash reproduction
                 self.crasher.reproduce()

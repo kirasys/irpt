@@ -25,7 +25,7 @@ def boot_cmd(args):
     cmd += '-machine q35 -enable-kvm -m 4096 -smp 4 '
     cmd += '-hda %s -vga vmware ' % args['qcow2']
     cmd += '-chardev socket,server,nowait,path=./out/interface_0,id=kafl_interface '
-    cmd += '-device kafl,chardev=kafl_interface,bitmap_size=65536,shm0=./out/program,shm1=/dev/shm/kafl_out_qemu_payload_0,bitmap=/dev/shm/kafl_out_bitmap_0,reload_mode=False'
+    cmd += '-device kafl,chardev=kafl_interface,bitmap_size=65536,shm0=./out/program,shm1=/dev/shm/kafl_out_qemu_payload_0,bitmap=/dev/shm/kafl_out_bitmap_0,reload_mode=False '
     if args['snapshot']:
         cmd += '-snapshot '
     os.system(cmd)
@@ -43,9 +43,9 @@ def snapshot_cmd(args):
     cmd  = './qemu-5.0.0/x86_64-softmmu/qemu-system-x86_64 '
     cmd += '-hdb ./snapshot_win/wram.qcow2 '
     cmd += '-hda ./snapshot_win/overlay_0.qcow2 '
-    cmd += '-machine q35 -serial mon:stdio '
+    cmd += '-machine q35 -enable-kvm -m 4096 '
+    cmd += '-serial mon:stdio '
     cmd += '-net none '
-    cmd += '-enable-kvm -m 4096 '
     os.system(cmd)
 
 def add_args_general(parser):

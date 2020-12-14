@@ -6,6 +6,6 @@ class IRP:
         self.InBufferLength = inlength
         self.OutBufferLength = outlength
         if inbuffer == '':
-            self.InBuffer = [0xff] * self.InBufferLength
+            self.InBuffer = [0xFF] * self.InBufferLength
         else:
             self.InBuffer = list(map(ord, inbuffer))

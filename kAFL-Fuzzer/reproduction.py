@@ -12,6 +12,8 @@ Launcher for Fuzzing with IRPT. Check fuzzer/core.py for more.
 import os
 import sys
 
+from debug.log import log
+
 from wdm.irp import IRP
 from common.config import FuzzerConfiguration
 from common.qemu import qemu
@@ -33,12 +35,15 @@ def main():
         iocode = u32(payload[i:i+4])
         inlength = u32(payload[i+4:i+8])
         outlength = u32(payload[i+8:i+12])
-        inbuffer = str(payload[i+12:i+12+inlength])
-        print("[+] IoControlCode(%x) InBufferLength(%d)" % (iocode, inlength))
+        inbuffer = str(payload[i+12:i+12+(inlength & 0xFFFFFF)])
+        log("[+] IoControlCode(%x) InBufferLength(%d)" % (iocode, inlength))
         
         exec_res = q.send_irp(IRP(iocode, inlength, outlength, inbuffer))
         if exec_res.is_crash():
-            print("Crashed!!")
+            if not exec_res.is_timeout():
+                log("Crashed!!")
+            else:
+                log("Timeout!!")
             q.shutdown()
             return
 

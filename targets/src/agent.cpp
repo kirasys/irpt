@@ -32,6 +32,7 @@ void harness() {
 	return;
 }
 
+char PagedArea[0x800000];
 char OutBuffer[0x10000];
 
 int main(int argc, char** argv){
@@ -88,16 +89,33 @@ int main(int argc, char** argv){
 				kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
 				
 				/* kernel fuzzing */
-				//hprintf("%x %16s", payload_buffer->IoControlCode, &payload_buffer->InBuffer);
-				DeviceIoControl(kafl_vuln_handle,
-					payload_buffer->IoControlCode,
-					&payload_buffer->InBuffer,
-					payload_buffer->InBufferLength,
-					OutBuffer,
-					payload_buffer->OutBufferLength,
-					NULL,
-					NULL
-				);
+				//hprintf("%x %x", payload_buffer->IoControlCode, payload_buffer->InBufferLength);
+
+				if (payload_buffer->InBufferLength >> 24) {	// NonPaged fault fuzzing.
+					memset(PagedArea, 0x61, sizeof(PagedArea));
+					memcpy(PagedArea, payload_buffer->InBuffer, payload_buffer->InBufferLength & 0xffffff);
+
+					DeviceIoControl(kafl_vuln_handle,
+						payload_buffer->IoControlCode,
+						PagedArea,
+						sizeof(PagedArea),
+						OutBuffer,
+						payload_buffer->OutBufferLength,
+						NULL,
+						NULL
+					);
+				}
+				else {
+					DeviceIoControl(kafl_vuln_handle,
+						payload_buffer->IoControlCode,
+						payload_buffer->InBuffer,
+						payload_buffer->InBufferLength,
+						OutBuffer,
+						payload_buffer->OutBufferLength,
+						NULL,
+						NULL
+					);
+				}
 
 				/* inform fuzzer about finished fuzzing iteration */
 				//hprintf("[+] Injection finished...");
