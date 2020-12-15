@@ -27,7 +27,7 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 
 HANDLE kafl_vuln_handle;
 
-void harness() {
+void harness(void) {
 	//kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, module_base_address + 0x15210, (uint64_t)"\x00\x00\x00\x00\x00\x00\x00\x00", 8);
 	return;
 }
@@ -36,19 +36,10 @@ char PagedArea[0x800000];
 char OutBuffer[0x10000];
 
 int main(int argc, char** argv){
+	UINT64 psGetCurrentProcessId;
+	UINT64 psGetCurrentThreadId;
+
     hprintf("[+] Starting... %s", argv[0]);
-	/* Patching ioctl filter
-	UINT64 psGetCurrentProcessId = 0x0;
-    UINT64 psGetCurrentThreadId = 0x0;
-
-	psGetCurrentProcessId = resolve_KernelFunction(sPsGetCurrentProcessId);
-	*(uint32_t*)(ioctl_filter_bypass + 1) = GetCurrentProcessId();
-	kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, psGetCurrentProcessId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
-
-	psGetCurrentThreadId = resolve_KernelFunction(sPsGetCurrentThreadId);
-	*(uint32_t*)(ioctl_filter_bypass + 1) = GetCurrentThreadId();
-	kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, psGetCurrentThreadId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
-	*/
 
     hprintf("[+] Allocating buffer for kAFL_payload struct");
     kAFL_payload* payload_buffer = (kAFL_payload*)VirtualAlloc(0, PAYLOAD_SIZE + 0x1000, MEM_COMMIT, PAGE_READWRITE);
@@ -82,69 +73,75 @@ int main(int argc, char** argv){
 		harness();
 		
 		while(1){
-				kAFL_hypercall(HYPERCALL_KAFL_NEXT_PAYLOAD, 0);
-				if (payload_buffer->IoControlCode <= MAX_INST_COUNT)
-					break;
+			kAFL_hypercall(HYPERCALL_KAFL_NEXT_PAYLOAD, 0);
+
+			uint32_t cmd = payload_buffer->Command;
+			switch (cmd) {
+			case EXECUTE_IRP:
 				/* request new payload (*blocking*) */
 				kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
-				
-				/* kernel fuzzing */
 				//hprintf("%x %x", payload_buffer->IoControlCode, payload_buffer->InBufferLength);
 
-				if (payload_buffer->InBufferLength >> 24) {	// NonPaged fault fuzzing.
-					memset(PagedArea, 0x61, sizeof(PagedArea));
-					memcpy(PagedArea, payload_buffer->InBuffer, payload_buffer->InBufferLength & 0xffffff);
-
-					DeviceIoControl(kafl_vuln_handle,
-						payload_buffer->IoControlCode,
-						PagedArea,
-						sizeof(PagedArea),
-						OutBuffer,
-						payload_buffer->OutBufferLength,
-						NULL,
-						NULL
-					);
-				}
-				else {
-					DeviceIoControl(kafl_vuln_handle,
-						payload_buffer->IoControlCode,
-						payload_buffer->InBuffer,
-						payload_buffer->InBufferLength,
-						OutBuffer,
-						payload_buffer->OutBufferLength,
-						NULL,
-						NULL
-					);
-				}
+				DeviceIoControl(kafl_vuln_handle,
+					payload_buffer->IoControlCode,
+					payload_buffer->InBuffer,
+					payload_buffer->InBufferLength,
+					OutBuffer,
+					payload_buffer->OutBufferLength,
+					NULL,
+					NULL
+				);
 
 				/* inform fuzzer about finished fuzzing iteration */
-				//hprintf("[+] Injection finished...");
 				kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
-		}
+				break;
+			case DRIVER_REVERT:
+				kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, 0, 0, 0);
+				break;
+			case DRIVER_RELOAD:
+				CloseHandle(kafl_vuln_handle);
+				if (!unload_driver() || !load_driver())
+					kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
+				
+				kafl_vuln_handle = open_driver_device();
+				if (!kafl_vuln_handle)
+					kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 
-		/* Execute a command from fuzzer.*/
-		uint32_t cmd = payload_buffer->IoControlCode;
-		switch (cmd) {
-        case AGENT_EXIT:
-            kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
-			return 0;
-		case DRIVER_REVERT:
-			kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, 0, 0, 0);
-			break;
-		case DRIVER_RELOAD:
-			CloseHandle(kafl_vuln_handle);
-			if (!unload_driver() || !load_driver())
-				kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
-			
-			kafl_vuln_handle = open_driver_device();
-			if (!kafl_vuln_handle)
-				kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
+				if (!set_ip0_filter()) {
+					hprintf("[+] Fail to set ip0 filter.");
+					kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
+				}
+				break;
+			case SCAN_PAGE_FAULT:
+				memset(PagedArea, 0x61, sizeof(PagedArea));
+				memcpy(PagedArea, payload_buffer->InBuffer, payload_buffer->InBufferLength);
+				
+				/* request new payload (*blocking*) */
+				kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
 
-			if (!set_ip0_filter()) {
-				hprintf("[+] Fail to set ip0 filter.");
-				kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
+				DeviceIoControl(kafl_vuln_handle,
+					payload_buffer->IoControlCode,
+					PagedArea,
+					sizeof(PagedArea),
+					OutBuffer,
+					payload_buffer->OutBufferLength,
+					NULL,
+					NULL
+				);
+
+				/* inform fuzzer about finished fuzzing iteration */
+				kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
+				break;
+			case ANTI_IOCTL_FILTER:
+				psGetCurrentProcessId = resolve_KernelFunction(sPsGetCurrentProcessId);
+				psGetCurrentThreadId = resolve_KernelFunction(sPsGetCurrentThreadId);
+
+				*(uint32_t*)(ioctl_filter_bypass + 1) = GetCurrentProcessId();
+				kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, psGetCurrentProcessId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
+				*(uint32_t*)(ioctl_filter_bypass + 1) = GetCurrentThreadId();
+				kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, psGetCurrentThreadId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
+				break;
 			}
-			break;
 		}
 	}
     return 0;

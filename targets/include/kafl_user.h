@@ -50,7 +50,7 @@
 #define HYPERCALL_KAFL_IP_FILTER			23
 #define HYPERCALL_KAFL_MEMWRITE				24
 
-#define PAYLOAD_SIZE						0x30000					/* up to 8KB payloads */
+#define PAYLOAD_SIZE						0x10000					
 #define PROGRAM_SIZE						(128 << 20)				/* kAFL supports 128MB programm data */
 #define INFO_SIZE        					(128 << 10)				/* 128KB info string */
 #define TARGET_FILE							"/tmp/fuzzing_engine"	/* default target for the userspace component */
@@ -59,12 +59,14 @@
 #define HPRINTF_MAX_SIZE					0x1000					/* up to 4KB hprintf strings */
 
 /* agent action */
-#define MAX_INST_COUNT		5
-#define AGENT_EXIT			0
+#define EXECUTE_IRP			0
 #define DRIVER_REVERT 		1
 #define DRIVER_RELOAD		2
+#define SCAN_PAGE_FAULT		3
+#define ANTI_IOCTL_FILTER	4
 
 typedef struct{
+	uint32_t Command;
 	uint32_t IoControlCode;
 	uint32_t InBufferLength;
 	uint32_t OutBufferLength;

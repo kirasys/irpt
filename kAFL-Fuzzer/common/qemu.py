@@ -732,6 +732,7 @@ class qemu:
         # actual payload is limited to payload_size - sizeof(uint32) - sizeof(uint8)
         try:
             self.fs_shm.seek(0)
+            self.fs_shm.write(p32(irp.Command))
             self.fs_shm.write(p32(irp.IoControlCode))
             self.fs_shm.write(p32(irp.InBufferLength))
             self.fs_shm.write(p32(irp.OutBufferLength))
@@ -764,10 +765,13 @@ class qemu:
     
     def _revert_driver(self):
         try:
-            self.send_irp(IRP(qemu_protocol.DRIVER_REVERT, 0, 0))
+            self.send_irp(IRP(0, 0, 0, command=qemu_protocol.DRIVER_REVERT))
         except ConnectionResetError:
             sys.exit()
     
     def _reload_driver(self):
-        self.send_irp(IRP(qemu_protocol.DRIVER_RELOAD, 0, 0))
+        self.send_irp(IRP(0, 0, 0, command=qemu_protocol.DRIVER_RELOAD))
+    
+    def set_anti_ioctl_filter(self):
+        self.send_irp(IRP(0, 0, 0, command=qemu_protocol.ANTI_IOCTL_FILTER))
     
