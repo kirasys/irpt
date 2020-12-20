@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-kAFL Fuzzer Bitmap
+IRPT Fuzzer Bitmap
 """
 
 import array

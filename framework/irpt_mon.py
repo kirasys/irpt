@@ -615,7 +615,7 @@ locale.setlocale(locale.LC_ALL, '')
 code = locale.getpreferredencoding()
 
 if len(sys.argv) < 2 or not os.path.exists(sys.argv[1]):
-    print("Usage: " + sys.argv[0] + " <kafl-workdir> <driver-name>")
+    print("Usage: " + sys.argv[0] + " <IRPT-workdir> <driver-name>")
     sys.exit(1)
 
 WORKDIR = sys.argv[1]

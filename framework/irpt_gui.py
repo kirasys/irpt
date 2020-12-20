@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-Given a kAFL workdir, produce a text-based UI with status summary/overview.
+Given a IRPT workdir, produce a text-based UI with status summary/overview.
 """
 
 import curses
@@ -196,7 +196,7 @@ class GuiDrawer:
 
     def draw(self):
         d = self.data
-        self.gui.print_title_line("kAFL v0.2")
+        self.gui.print_title_line("IRPT v0.1")
         self.gui.print_sep_line()
         #self.gui.print_info_line([(37, "Target", d.target()), (38, "Config", d.config())])
         self.gui.print_info_line([
@@ -707,7 +707,7 @@ locale.setlocale(locale.LC_ALL, '')
 code = locale.getpreferredencoding()
 
 if len(sys.argv) < 2 or not os.path.exists(sys.argv[1]):
-    print("Usage: " + sys.argv[0] + " <kafl-workdir>")
+    print("Usage: " + sys.argv[0] + " <IRPT-workdir>")
     sys.exit(1)
 
 try:

@@ -21,7 +21,7 @@ default_config = {"PAYLOAD_SHM_SIZE": 196608,
                   "BITMAP_SHM_SIZE": 65536,
                   "COVERAGE_MAP_SHM_SIZE": 524288,
                   "AGENT_MAX_SIZE": 128 << 18,
-                  "QEMU_KAFL_LOCATION": "",
+                  "QEMU_LOCATION": "",
                   "RADAMSA_LOCATION": "radamsa/bin/radamsa",
                   "TIMEOUT_THRESHOLD": 3.0,
                   "ARITHMETIC_MAX": 35,
@@ -107,7 +107,7 @@ def add_args_general(parser):
                         help='show this help message and exit'
 )
 
-# kAFL/Fuzzer-specific options
+# IRPT/Fuzzer-specific options
 def add_args_fuzzer(parser):
     parser.add_argument('-seed_dir', required=False, metavar='<dir>', action=FullPath,
                         type=parse_is_dir, help='path to the seed directory.')
@@ -162,7 +162,7 @@ def add_args_qemu(parser):
                         type=parse_is_dir, help='path to a VM\'s overlay directory. Also needs -vm_ram')
     parser.add_argument('-vm_ram', metavar='<file>', required=False, action=FullPath, type=parse_is_file,
                         help='path to a VM\'s RAM snapshot file. Use together with -vm_dir.')
-    parser.add_argument('-S', required=False, metavar='<name>', help='name of VM snapshot to save/load (default: kafl).',
+    parser.add_argument('-S', required=False, metavar='<name>', help='name of VM snapshot to save/load (default: irpt).',
                         default="irpt", type=str)
 
     xorarg.add_argument('-kernel', metavar='<file>', required=False, action=FullPath, type=parse_is_file,
@@ -343,7 +343,7 @@ class DebugConfiguration(six.with_metaclass(Singleton)):
                            '<trace>\t\tperform trace run\n' \
                            '<trace-qemu>\tperform trace run and print QEMU stdout\n' \
                            '<noise>\t\tperform run and messure nondeterminism\n' \
-                           '<printk>\t\tredirect printk calls to kAFL\n' \
+                           '<printk>\t\tredirect printk calls to IRPT\n' \
                            '<redqueen>\trun redqueen debugger\n' \
                            '<redqueen-qemu>\trun redqueen debugger and print QEMU stdout\n' \
                            '<verify>\t\trun verifcation steps\n'

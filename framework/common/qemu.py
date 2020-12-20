@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-Launch Qemu VMs and execute test inputs produced by kAFL-Fuzzer.
+Launch Qemu VMs and execute test inputs produced by framework.
 """
 import sys
 import ctypes
@@ -75,7 +75,7 @@ class qemu:
         self.exiting = False
         self.timeout_threshold = self.config.config_values["TIMEOUT_THRESHOLD"]
 
-        self.cmd = self.config.config_values['QEMU_KAFL_LOCATION']
+        self.cmd = self.config.config_values['QEMU_LOCATION']
 
         # TODO: list append should work better than string concatenation, especially for str.replace() and later popen()
         self.cmd += " -serial file:" + self.qemu_serial_log + \

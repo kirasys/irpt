@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 """
-Given a kAFL workdir, print an overview of all inputs discovered so far.
+Given a IRPT workdir, print an overview of all inputs discovered so far.
 Optionally also visualize this output using an xdot graph.
 
 """
@@ -132,23 +132,23 @@ class Graph:
 def main(workdir, outfile=None):
 
     if glob.glob(workdir + "/slave_stats_*") == []:
-        print("No kAFL statistics found. Invalid workdir?")
+        print("No IRPT statistics found. Invalid workdir?")
 
     dot = Graph(workdir, outfile)
     dot.process_once()
 
 if __name__ == "__main__":
 
-    KAFL_ROOT = os.path.dirname(os.path.realpath(__file__)) + "/"
-    KAFL_BANNER = KAFL_ROOT + "banner.txt"
-    KAFL_CONFIG = KAFL_ROOT + "kafl.ini"
+    IRPT_ROOT = os.path.dirname(os.path.realpath(__file__)) + "/"
+    IRPT_BANNER = IRPT_ROOT + "banner.txt"
+    IRPT_CONFIG = IRPT_ROOT + "irpt.ini"
 
-    with open(KAFL_BANNER) as f:
+    with open(IRPT_BANNER) as f:
         for line in f:
             print(line.replace("\n", ""))
 
     print("<< " + common.color.BOLD + common.color.OKGREEN +
-            sys.argv[0] + ": kAFL Plotter " + common.color.ENDC + ">>\n")
+            sys.argv[0] + ": IRPT Plotter " + common.color.ENDC + ">>\n")
 
     if (len(sys.argv) == 2):   main(sys.argv[1])
     elif (len(sys.argv) == 3): main(sys.argv[1], outfile=sys.argv[2])

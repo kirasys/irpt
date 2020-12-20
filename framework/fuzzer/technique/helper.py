@@ -18,16 +18,13 @@ MAX_WALKING_BITS_SIZE = 0x2000
 MAX_INTERESTING_SIZE = 0x2000
 MAX_RAND_VALUES_SIZE = 0x2000
 
-# TODO Align with kafl.ini payload_shm_size and other instances of payload max size!
-KAFL_MAX_FILE = 128 << 10
-
 # TODO: Align havoc stage parameters with AFL or better
 HAVOC_BLK_SMALL = 32
 HAVOC_BLK_MEDIUM = 128
 HAVOC_BLK_LARGE = 1500
 HAVOC_BLK_XL = 32768
 
-# TODO: Compare kAFL HAVOC/deterministic round scheduling against AFL
+# TODO: Compare IRPT HAVOC/deterministic round scheduling against AFL
 AFL_ARITH_MAX = 35
 AFL_HAVOC_MIN = 256
 AFL_HAVOC_CYCLES = 5000

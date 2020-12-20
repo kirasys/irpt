@@ -17,7 +17,7 @@ def parse_is_file(dirname):
     else:
         return dirname
 
-BASIC_CMD  = 'python3 kAFL-Fuzzer/%s.py '
+BASIC_CMD  = 'python3 framework/%s.py '
 BASIC_CMD += '-vm_ram snapshot_win/wram.qcow2 '
 BASIC_CMD += '-vm_dir snapshot_win/ '
 BASIC_CMD += '-agent targets/bin/agent.exe '
@@ -31,12 +31,12 @@ BASIC_CMD += '--purge '
 BASIC_CMD += '-interface %s '
 BASIC_CMD += '-S %s '
 
-def ioctl_coverage_cmd(args):
-    cmd = BASIC_CMD % ('ioctl_coverage', args['driver'], args['interface'], args['vm'])
+def test_cmd(args):
+    cmd = BASIC_CMD % ('irpt_test', args['driver'], args['interface'], args['vm'])
     os.system(cmd)
 
-def reproduction_cmd(args):
-    cmd  = BASIC_CMD % ('reproduction', args['driver'], args['interface'], args['vm'])
+def repro_cmd(args):
+    cmd  = BASIC_CMD % ('irpt_repro', args['driver'], args['interface'], args['vm'])
     cmd += '-payload %s ' % args['payload']
     if args['revert']:
         cmd += "-revert "
@@ -45,13 +45,13 @@ def reproduction_cmd(args):
     os.system('kill -9 `pgrep qemu` 2>/dev/null')
 
 def fuzz_cmd(args):
-    cmd = BASIC_CMD % ('kafl_fuzz', args['driver'], args['interface'], args['vm'])
+    cmd = BASIC_CMD % ('irpt_fuzz', args['driver'], args['interface'], args['vm'])
     if args['revert']:
         cmd += "-revert "
 
     if args['tui']:
         cmd += "-tui "
-        monitor_cmd = "python3 kAFL-Fuzzer/kafl_mon.py out " + os.path.basename(args['driver'])
+        monitor_cmd = "python3 framework/irpt_mon.py out " + os.path.basename(args['driver'])
 
         while True:
             row, col = os.popen('stty size', 'r').read().split()
@@ -89,10 +89,10 @@ def add_args_reprodunction(parser):
     parser.add_argument('-payload', metavar='<file>', required=False, action=FullPath,
                         type=parse_is_file, help='path to interface of target driver.')
 
-modes = ['fuzz', 'ioctl_coverage', 'reproduction']
+modes = ['fuzz', 'test', 'repro']
 modes_help = '''fuzz:\tkernel fuzzing mode
-ioctl_coverage:\tioctl code coverage testing mode
-reproduction:\treproduce target payload.
+test:\tioctl code coverage testing mode
+repro:\treproduce target payload.
 '''
 
 def main():
@@ -122,13 +122,13 @@ def main():
     mode = args['mode']
     if mode == 'fuzz':
         fuzz_cmd(args)
-    elif mode == 'ioctl_coverage':
-        ioctl_coverage_cmd(args)
-    elif mode == 'reproduction':
+    elif mode == 'test':
+        test_cmd(args)
+    elif mode == 'repro':
         if args['payload']:
-            reproduction_cmd(args)
+            repro_cmd(args)
         else:
-            print("reproduction mode requires payload.")
+            print("repro mode requires payload.")
     else:
         print("Invalid mode")
 

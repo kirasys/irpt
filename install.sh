@@ -10,7 +10,7 @@ QEMU_VERSION="5.0.0"
 QEMU_URL="https://download.qemu.org/qemu-${QEMU_VERSION}.tar.xz"
 
 echo "================================================="
-echo "           kAFL auto-magic installer             "
+echo "           IRPT auto-magic installer             "
 echo "================================================="
 
 checked_download()
@@ -85,10 +85,10 @@ system_deps()
 
 	echo "[*] Installing build dependencies for QEMU ..."
 	sudo apt-get build-dep qemu-system-x86 -y
-	# libcapstone is an optional qemu feature but a hard requirement for kAFL
+	# libcapstone is an optional qemu feature but a hard requirement for IRPT
 	sudo apt-get install libcapstone-dev libcapstone3
 
-	echo "[*] Installing kAFL python dependencies ..."
+	echo "[*] Installing IRPT python dependencies ..."
 	pip3 install --user mmh3 lz4 psutil fastrand ipdb inotify msgpack toposort pygraphviz pgrep numpy
 }
 
@@ -113,9 +113,9 @@ build_qemu()
 	echo
 	echo "-------------------------------------------------"
 	echo "Qemu build should be done now. Note that you do not have to install this Qemu build into the system."
-	echo "Just update kAFL-Fuzzer/kafl.ini to point it in the proper direction:"
+	echo "Just update framework/irpt.ini to point it in the proper direction:"
 	echo
-	echo    QEMU_KAFL_LOCATION = qemu-${QEMU_VERSION}/x86_64-softmmu/qemu-system-x86_64
+	echo    QEMU_LOCATION = qemu-${QEMU_VERSION}/x86_64-softmmu/qemu-system-x86_64
 	echo
 
 	popd
@@ -140,7 +140,7 @@ build_linux()
    	# use current/system config as base, but limit modules to actual used..
 	yes ""|make oldconfig
 	#make localmodconfig
-	./scripts/config --set-str CONFIG_LOCALVERSION "-kAFL" --set-val CONFIG_KVM_VMX_PT y
+	./scripts/config --set-str CONFIG_LOCALVERSION "-irpt" --set-val CONFIG_KVM_VMX_PT y
 	./scripts/config --set-str CONFIG_SYSTEM_TRUSTED_KEYS ""
 	make -j $jobs
 	echo "-------------------------------------------------"

@@ -1,8 +1,8 @@
 /*
 
-Copyright (C) 2017 Robert Gawlik
+Copyright (C) 2020 kirasys
 
-This file is part of kAFL Fuzzer (kAFL).
+This file is part of IRPT Fuzzer (IRPT).
 
 QEMU-PT is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <windows.h>
 #include <stdio.h>
-#include "kafl_user.h"
+#include "irpt_user.h"
 
 /* Driver and agent file */
 #include "driver.h"
@@ -127,21 +127,21 @@ int main(int argc, char** argv){
     memset(program_buffer, 0xff, PROGRAM_SIZE);
 
     /* this hypercall will generate a VM snapshot for the fuzzer and subsequently terminate QEMU */
-    kAFL_hypercall(HYPERCALL_KAFL_SNAPSHOT, 0);
+    Hypercall(HYPERCALL_IRPT_SNAPSHOT, 0);
 
     /***** Fuzzer Entrypoint *****/
-    //kAFL_hypercall(HYPERCALL_KAFL_PRINTF, "Fuzzing start");
-    kAFL_hypercall(HYPERCALL_KAFL_LOCK, 0);
+    //Hypercall(HYPERCALL_IRPT_PRINTF, "Fuzzing start");
+    Hypercall(HYPERCALL_IRPT_LOCK, 0);
 
     /* initial fuzzer handshake */
-    kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
-    kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
+    Hypercall(HYPERCALL_IRPT_ACQUIRE, 0);
+    Hypercall(HYPERCALL_IRPT_RELEASE, 0);
     /* submit panic address */
-    kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, keBugCheck);
-    kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_PANIC, keBugCheckEx);
+    Hypercall(HYPERCALL_IRPT_SUBMIT_PANIC, keBugCheck);
+    Hypercall(HYPERCALL_IRPT_SUBMIT_PANIC, keBugCheckEx);
 
     /* submit virtual address of program buffer and wait for data (*blocking*) */
-    kAFL_hypercall(HYPERCALL_KAFL_GET_PROGRAM, (UINT64)program_buffer);
+    Hypercall(HYPERCALL_IRPT_GET_PROGRAM, (UINT64)program_buffer);
     /* execute fuzzer program */
     load_programs((char*)program_buffer);
     /* bye */ 

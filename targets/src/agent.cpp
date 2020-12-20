@@ -1,8 +1,8 @@
 /*
 
-Copyright (C) 2017 Robert Gawlik
+Copyright (C) 2020 kirasys
 
-This file is part of kAFL Fuzzer (kAFL).
+This file is part of IPRT Fuzzer (IRPT).
 
 QEMU-PT is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,14 +21,14 @@ along with QEMU-PT.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <windows.h>
 #include <stdio.h>
-#include "kafl_user.h"
+#include "irpt_user.h"
 #include "driver.h"
 #include "kernel.h"
 
-HANDLE kafl_vuln_handle;
+HANDLE device_handle;
 
 void harness(void) {
-	//kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, module_base_address + 0x15210, (uint64_t)"\x00\x00\x00\x00\x00\x00\x00\x00", 8);
+	//HypercallEx(HYPERCALL_IRPT_MEMWRITE, module_base_address + 0x15210, (uint64_t)"\x00\x00\x00\x00\x00\x00\x00\x00", 8);
 	return;
 }
 
@@ -41,28 +41,28 @@ int main(int argc, char** argv){
 
     hprintf("[+] Starting... %s", argv[0]);
 
-    hprintf("[+] Allocating buffer for kAFL_payload struct");
-    kAFL_payload* payload_buffer = (kAFL_payload*)VirtualAlloc(0, PAYLOAD_SIZE + 0x1000, MEM_COMMIT, PAGE_READWRITE);
+    hprintf("[+] Allocating buffer for IRPT_payload struct");
+    IRPT_payload* payload_buffer = (IRPT_payload*)VirtualAlloc(0, PAYLOAD_SIZE + 0x1000, MEM_COMMIT, PAGE_READWRITE);
 
-    hprintf("[+] Memset kAFL_payload at address %lx (size %d)", (uint64_t) payload_buffer, PAYLOAD_SIZE + 0x1000);
+    hprintf("[+] Memset IRPT_payload at address %lx (size %d)", (uint64_t) payload_buffer, PAYLOAD_SIZE + 0x1000);
     memset(payload_buffer, 0xff, PAYLOAD_SIZE + 0x1000);
 
 	/* submit the guest virtual address of the payload buffer */
     hprintf("[+] Submitting buffer address to hypervisor...");
-    kAFL_hypercall(HYPERCALL_KAFL_GET_PAYLOAD, (UINT64)payload_buffer);
+    Hypercall(HYPERCALL_IRPT_GET_PAYLOAD, (UINT64)payload_buffer);
 
     /* this hypercall submits the current CR3 value */ 
     hprintf("[+] Submitting current CR3 value to hypervisor...");
-    kAFL_hypercall(HYPERCALL_KAFL_SUBMIT_CR3, 0);
+    Hypercall(HYPERCALL_IRPT_SUBMIT_CR3, 0);
 
 	// Register the driver.
 	delete_service();
     create_service();
     load_driver();
 
-	kafl_vuln_handle = open_driver_device();
-	if (!kafl_vuln_handle)
-		kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
+	device_handle = open_driver_device();
+	if (!device_handle)
+		Hypercall(HYPERCALL_IRPT_USER_ABORT, 0);
 
 	if (!set_ip0_filter()) {
 		hprintf("[+] Fail to set ip0 filter.");
@@ -73,16 +73,16 @@ int main(int argc, char** argv){
 		harness();
 		
 		while(1){
-			kAFL_hypercall(HYPERCALL_KAFL_NEXT_PAYLOAD, 0);
+			Hypercall(HYPERCALL_IRPT_NEXT_PAYLOAD, 0);
 
 			uint32_t cmd = payload_buffer->Command;
 			switch (cmd) {
 			case EXECUTE_IRP:
 				/* request new payload (*blocking*) */
-				kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
+				Hypercall(HYPERCALL_IRPT_ACQUIRE, 0);
 				//hprintf("%x %x", payload_buffer->IoControlCode, payload_buffer->InBufferLength);
 
-				DeviceIoControl(kafl_vuln_handle,
+				DeviceIoControl(device_handle,
 					payload_buffer->IoControlCode,
 					payload_buffer->InBuffer,
 					payload_buffer->InBufferLength,
@@ -93,23 +93,23 @@ int main(int argc, char** argv){
 				);
 
 				/* inform fuzzer about finished fuzzing iteration */
-				kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
+				Hypercall(HYPERCALL_IRPT_RELEASE, 0);
 				break;
 			case DRIVER_REVERT:
-				kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, 0, 0, 0);
+				HypercallEx(HYPERCALL_IRPT_IP_FILTER, 0, 0, 0);
 				break;
 			case DRIVER_RELOAD:
-				CloseHandle(kafl_vuln_handle);
+				CloseHandle(device_handle);
 				if (!unload_driver() || !load_driver())
-					kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
+					Hypercall(HYPERCALL_IRPT_USER_ABORT, 0);
 				
-				kafl_vuln_handle = open_driver_device();
-				if (!kafl_vuln_handle)
-					kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
+				device_handle = open_driver_device();
+				if (!device_handle)
+					Hypercall(HYPERCALL_IRPT_USER_ABORT, 0);
 
 				if (!set_ip0_filter()) {
 					hprintf("[+] Fail to set ip0 filter.");
-					kAFL_hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
+					Hypercall(HYPERCALL_IRPT_USER_ABORT, 0);
 				}
 				break;
 			case SCAN_PAGE_FAULT:
@@ -117,9 +117,9 @@ int main(int argc, char** argv){
 				memcpy(PagedArea, payload_buffer->InBuffer, payload_buffer->InBufferLength);
 				
 				/* request new payload (*blocking*) */
-				kAFL_hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
+				Hypercall(HYPERCALL_IRPT_ACQUIRE, 0);
 
-				DeviceIoControl(kafl_vuln_handle,
+				DeviceIoControl(device_handle,
 					payload_buffer->IoControlCode,
 					PagedArea,
 					sizeof(PagedArea),
@@ -130,16 +130,16 @@ int main(int argc, char** argv){
 				);
 
 				/* inform fuzzer about finished fuzzing iteration */
-				kAFL_hypercall(HYPERCALL_KAFL_RELEASE, 0);
+				Hypercall(HYPERCALL_IRPT_RELEASE, 0);
 				break;
 			case ANTI_IOCTL_FILTER:
 				psGetCurrentProcessId = resolve_KernelFunction(sPsGetCurrentProcessId);
 				psGetCurrentThreadId = resolve_KernelFunction(sPsGetCurrentThreadId);
 
 				*(uint32_t*)(ioctl_filter_bypass + 1) = GetCurrentProcessId();
-				kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, psGetCurrentProcessId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
+				HypercallEx(HYPERCALL_IRPT_MEMWRITE, psGetCurrentProcessId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
 				*(uint32_t*)(ioctl_filter_bypass + 1) = GetCurrentThreadId();
-				kAFL_hypercallEx(HYPERCALL_KAFL_MEMWRITE, psGetCurrentThreadId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
+				HypercallEx(HYPERCALL_IRPT_MEMWRITE, psGetCurrentThreadId + 0x10, (uint64_t)ioctl_filter_bypass, sizeof(ioctl_filter_bypass));
 				break;
 			}
 		}

@@ -126,9 +126,9 @@ bool unload_driver() {
 }
 
 HANDLE open_driver_device() {
-	HANDLE kafl_vuln_handle = INVALID_HANDLE_VALUE;
+	HANDLE handle = INVALID_HANDLE_VALUE;
 	hprintf("[+] Attempting to open vulnerable device file (%s)", DRIVER_SVCPATH);
-	kafl_vuln_handle = CreateFile(DRIVER_SVCPATH,
+	handle = CreateFile(DRIVER_SVCPATH,
 		GENERIC_READ | GENERIC_WRITE,
 		FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL,
@@ -137,11 +137,11 @@ HANDLE open_driver_device() {
 		NULL
 	);
 
-	if (kafl_vuln_handle == INVALID_HANDLE_VALUE) {
+	if (handle == INVALID_HANDLE_VALUE) {
 		hprintf("[-] Cannot get device handle: 0x%X", GetLastError());
 		return 0;
 	}
-	return kafl_vuln_handle;
+	return handle;
 }
 
 bool set_ip0_filter() {
@@ -170,7 +170,7 @@ bool set_ip0_filter() {
 			if (!strcmp(driver_filename, DRIVERNAME)) {
 				hprintf("[+] Set ip0 filter.");
 				module_base_address = (UINT64)drivers[i];
-				kAFL_hypercallEx(HYPERCALL_KAFL_IP_FILTER, module_base_address, module_base_address + ModuleInfo->Modules[i].ImageSize, 0);
+				HypercallEx(HYPERCALL_IRPT_IP_FILTER, module_base_address, module_base_address + ModuleInfo->Modules[i].ImageSize, 0);
 				break;
 			}
 		}

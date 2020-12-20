@@ -11,12 +11,12 @@ from fcntl import ioctl
 from common.color import WARNING_PREFIX, ERROR_PREFIX, FAIL, WARNING, ENDC
 
 
-def check_if_nativ_lib_compiled(kafl_root):
-    if not (os.path.exists(kafl_root + "fuzzer/native/") and
-            os.path.exists(kafl_root + "fuzzer/native/bitmap.so")):
+def check_if_nativ_lib_compiled(irpt_root):
+    if not (os.path.exists(irpt_root + "fuzzer/native/") and
+            os.path.exists(irpt_root + "fuzzer/native/bitmap.so")):
         print(WARNING + "Attempting to build missing file fuzzer/native/bitmap.so ..." + ENDC)
 
-        p = subprocess.Popen(("make -C " + kafl_root + "fuzzer/native/").split(" "),
+        p = subprocess.Popen(("make -C " + irpt_root + "fuzzer/native/").split(" "),
                              stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
         if p.wait() != 0:
@@ -108,7 +108,7 @@ def check_vmx_pt():
 
     return True
 
-def check_kafl_ini(rootdir):
+def check_irpt_ini(rootdir):
     configfile = rootdir + "irpt.ini"
     if not os.path.exists(configfile):
         print(WARNING + WARNING_PREFIX + "Could not find irpt.ini. Creating default config at " + configfile + ENDC)
@@ -119,17 +119,17 @@ def check_kafl_ini(rootdir):
 
 
 def check_qemu_version(config):
-    if not config.config_values["QEMU_KAFL_LOCATION"] or config.config_values["QEMU_KAFL_LOCATION"] == "":
-        print(FAIL + ERROR_PREFIX + "QEMU_KAFL_LOCATION is not set in irpt.ini!" + ENDC)
+    if not config.config_values["QEMU_LOCATION"] or config.config_values["QEMU_LOCATION"] == "":
+        print(FAIL + ERROR_PREFIX + "QEMU_LOCATION is not set in irpt.ini!" + ENDC)
         return False
 
-    if not os.path.exists(config.config_values["QEMU_KAFL_LOCATION"]):
+    if not os.path.exists(config.config_values["QEMU_LOCATION"]):
         print(FAIL + ERROR_PREFIX + "QEMU-PT executable does not exists..." + ENDC)
         return False
 
     output = ""
     try:
-        proc = subprocess.Popen([config.config_values["QEMU_KAFL_LOCATION"], "-version"],
+        proc = subprocess.Popen([config.config_values["QEMU_LOCATION"], "-version"],
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
         output = str(proc.stdout.readline())
@@ -137,7 +137,7 @@ def check_qemu_version(config):
     except:
         print(FAIL + ERROR_PREFIX + "Binary is not executable...?" + ENDC)
         return False
-    if not ("QEMU-PT" in output and "(kAFL)" in output):
+    if not ("QEMU-PT" in output and "(IRPT)" in output):
         print(FAIL + ERROR_PREFIX + "Wrong QEMU-PT executable..." + ENDC)
         return False
     return True
@@ -159,7 +159,7 @@ def check_radamsa_location(config):
 def self_check(rootdir):
     if not check_if_nativ_lib_compiled(rootdir):
         return False
-    if not check_kafl_ini(rootdir):
+    if not check_irpt_ini(rootdir):
         return False
     if not check_version():
         return False
