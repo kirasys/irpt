@@ -23,7 +23,7 @@ default_config = {"PAYLOAD_SHM_SIZE": 196608,
                   "AGENT_MAX_SIZE": 128 << 18,
                   "QEMU_KAFL_LOCATION": "",
                   "RADAMSA_LOCATION": "radamsa/bin/radamsa",
-                  "TIMEOUT_TICK_FACTOR": 10.0,
+                  "TIMEOUT_THRESHOLD": 3.0,
                   "ARITHMETIC_MAX": 35,
                   "APPLE-SMC-OSK": "",
                   "AGENTS-FOLDER": "./targets/",
@@ -188,21 +188,8 @@ def add_args_qemu(parser):
     #                    help='Set IP trace filter range 2 (not supported in this version)')
     #parser.add_argument('-ip3', required=False, metavar='<start-end>', type=parse_range_ip_filter,
     #                    help='Set IP trace filter range 3 (not supported in this version)')
-
-    parser.add_argument('-macOS', required=False, help='enable macOS mode (requires Apple OSK)',
-                        action='store_true', default=False)
     parser.add_argument('-extra', metavar='<args>', required=False, help='extra arguments to add to qemu cmdline',
                         default="", type=str)
-    parser.add_argument('-forkserver', required=False, help='target has forkserver (skip Qemu resets)',
-                        action='store_true', default=False)
-    #parser.add_argument('-R', required=False, help='disable fast reload mode (ignored)', action='store_false',
-    #                    default=True)
-    parser.add_argument('-catch_resets', required=False, help='interpret silent VM reboot as KASAN events',
-                        action='store_true', default=False)
-    parser.add_argument('-gdbserver', required=False, help='enable Qemu gdbserver (use via kafl_debug.py!)',
-                        action='store_true', default=False)
-
-
 
 class FullPath(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):

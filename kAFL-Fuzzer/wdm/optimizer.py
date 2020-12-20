@@ -36,9 +36,9 @@ class Optimizer:
             program, old_res, new_bytes, new_bits = self.optimizer_queue.pop()
 
             # quick validation for funky case.
-            self.q.turn_on_coverage_map()
+            self.q.enable_coverage_map()
             new_res = self.__execute(program.irps)
-            self.q.turn_off_coverage_map()
+            self.q.disable_coverage_map()
             if not new_res:
                 continue
             

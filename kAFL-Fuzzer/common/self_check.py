@@ -108,35 +108,6 @@ def check_vmx_pt():
 
     return True
 
-
-def check_apple_osk(config):
-    if config.argument_values["macOS"]:
-        if config.config_values["APPLE-SMC-OSK"] == "":
-            print(FAIL + ERROR_PREFIX + "APPLE SMC OSK is missing in irpt.ini!" + ENDC)
-            return False
-    return True
-
-
-def check_apple_ignore_msrs(config):
-    if config.argument_values["macOS"]:
-        try:
-            f = open("/sys/module/kvm/parameters/ignore_msrs")
-            if not 'Y' in f.read(1):
-                print(
-                    FAIL + ERROR_PREFIX + "KVM is not properly configured! Please execute the following command:" \
-                         + ENDC + "\n\n\tsudo su\n\techo 1 > /sys/module/kvm/parameters/ignore_msrs\n")
-                return False
-            else:
-                return True
-        except:
-            pass
-        finally:
-            f.close()
-        print(FAIL + ERROR_PREFIX + "KVM is not ready?!" + ENDC)
-        return False
-    return True
-
-
 def check_kafl_ini(rootdir):
     configfile = rootdir + "irpt.ini"
     if not os.path.exists(configfile):
@@ -200,10 +171,6 @@ def self_check(rootdir):
 
 
 def post_self_check(config):
-    if not check_apple_ignore_msrs(config):
-        return False
-    if not check_apple_osk(config):
-        return False
     if not check_qemu_version(config):
         return False
     if not check_radamsa_location(config):

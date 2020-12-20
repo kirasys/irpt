@@ -21,7 +21,7 @@ import sys
 from common.debug import enable_logging
 from common.self_check import post_self_check
 from common.util import prepare_working_dir, print_fail, print_note, print_warning, copy_seed_files
-from fuzzer.process.process import Process
+from wdm.process import Process
 from wdm.interface import interface_manager
 def qemu_sweep():
     pids = pgrep.pgrep("qemu")

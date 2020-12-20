@@ -48,8 +48,6 @@ class qemu:
         self.handshake_stage_2 = True
 
         self.debug_mode = debug_mode
-        self.patches_enabled = False
-        self.needs_execution_for_patches = False
         self.debug_counter = 0
 
         self.agent_size = config.config_values['AGENT_MAX_SIZE']
@@ -75,11 +73,9 @@ class qemu:
         self.qemu_serial_log = self.config.argument_values['work_dir'] + "/qemu_serial_%s.log" % self.qemu_id
 
         self.exiting = False
-        self.tick_timeout_treshold = self.config.config_values["TIMEOUT_TICK_FACTOR"]
+        self.timeout_threshold = self.config.config_values["TIMEOUT_THRESHOLD"]
 
         self.cmd = self.config.config_values['QEMU_KAFL_LOCATION']
-
-        self.catch_vm_reboots = self.config.argument_values['catch_resets']
 
         # TODO: list append should work better than string concatenation, especially for str.replace() and later popen()
         self.cmd += " -serial file:" + self.qemu_serial_log + \
@@ -124,12 +120,6 @@ class qemu:
         if self.debug_mode:
             self.cmd += " -d kafl -D " + self.qemu_trace_log
 
-        if self.catch_vm_reboots:
-            self.cmd += " -no-reboot"
-
-        if self.config.argument_values['gdbserver']:
-            self.cmd += " -s -S"
-
         if self.config.argument_values['extra']:
             self.cmd += " " + self.config.argument_values['extra']
 
@@ -148,14 +138,7 @@ class qemu:
         else:
             assert(False), "Must supply either -bios or -kernel or -vm_overlay/-vm_ram option"
 
-        if self.config.argument_values["macOS"]:
-            self.cmd = self.cmd.replace("-nographic -net none",
-                    "-nographic -netdev user,id=hub0port0 -device e1000-82545em,netdev=hub0port0,id=mac_vnet0 -cpu Penryn,kvm=off,vendor=GenuineIntel -device isa-applesmc,osk=\"" + self.config.config_values["APPLE-SMC-OSK"].replace("\"", "") + "\" -machine pc-q35-2.4")
-            if self.qemu_id == 0:
-                self.cmd = self.cmd.replace("-machine pc-q35-2.4", "-machine pc-q35-2.4 -redir tcp:5901:0.0.0.0:5900 -redir tcp:10022:0.0.0.0:22")
-        else:
-            self.cmd += " -machine q35 "
-
+        self.cmd += " -machine q35 "
 
         self.crashed = False
         self.timeout = False
@@ -191,43 +174,6 @@ class qemu:
         except Exception as e:
             print("__debug_hprintf: " + str(e))
 
-    def send_enable_patches(self):
-        if not self.patches_enabled:
-            assert (not self.needs_execution_for_patches)
-            self.needs_execution_for_patches = True
-            self.patches_enabled = True
-            self.__debug_send(qemu_protocol.ENABLE_PATCHES)
-            self.__debug_recv_expect(qemu_protocol.ENABLE_PATCHES)
-
-    def send_disable_patches(self):
-        if self.patches_enabled:
-            assert (not self.needs_execution_for_patches)
-            self.needs_execution_for_patches = True
-            self.patches_enabled = False
-            self.__debug_send(qemu_protocol.DISABLE_PATCHES)
-            self.__debug_recv_expect(qemu_protocol.DISABLE_PATCHES)
-        pass
-
-    def send_enable_trace(self):
-        self.__debug_send(qemu_protocol.ENABLE_TRACE_MODE)
-        self.__debug_recv_expect(qemu_protocol.ENABLE_TRACE_MODE)
-
-    def send_disable_trace(self):
-        self.__debug_send(qemu_protocol.DISABLE_TRACE_MODE)
-        self.__debug_recv_expect(qemu_protocol.DISABLE_TRACE_MODE)
-
-    def send_rq_set_light_instrumentation(self):
-        self.__debug_send(qemu_protocol.REDQUEEN_SET_LIGHT_INSTRUMENTATION)
-        self.__debug_recv_expect(qemu_protocol.REDQUEEN_SET_LIGHT_INSTRUMENTATION)
-
-    def send_rq_set_whitelist_instrumentation(self):
-        self.__debug_send(qemu_protocol.REDQUEEN_SET_WHITELIST_INSTRUMENTATION)
-        self.__debug_recv_expect(qemu_protocol.REDQUEEN_SET_WHITELIST_INSTRUMENTATION)
-
-    def send_rq_update_blacklist(self):
-        self.__debug_send(qemu_protocol.REDQUEEN_SET_BLACKLIST)
-        self.__debug_recv_expect(qemu_protocol.REDQUEEN_SET_BLACKLIST)
-
     def __debug_send(self, cmd):
         #self.last_bitmap_wrapper.invalidate() # works on a copy, probably obsolete..
         if self.debug_mode:
@@ -241,7 +187,7 @@ class qemu:
                 try:
                     log_qemu("[SEND] " + '\033[94m' + self.CMDS[cmd] + info + '\033[0m', self.qemu_id)
                 except:
-                    log_qemu("[SEND] " + "unknown cmd '" + res + "'", self.qemu_id)
+                    log_qemu("[SEND] " + "unknown cmd '" + cmd + "'", self.qemu_id)
         try:
             self.control.send(cmd)
         except (BrokenPipeError, OSError):
@@ -297,18 +243,13 @@ class qemu:
 
             if (len(res) == 0):
                 # Another case of socket error, apparently on Qemu reset/crash
-                if self.catch_vm_reboots:
-                    # Treat event as Qemu reset triggered by target, and log as KASAN
-                    log_qemu("Qemu exit? - Assuming target crash/reset (KASAN)", self.qemu_id)
+                # Default: assume Qemu exit is fatal bug in harness/setup
+                log_qemu("Fatal error in __debug_recv()", self.qemu_id)
+                sig = self.shutdown()
+                if sig == 0: # regular shutdown? still report as KASAN
                     return qemu_protocol.KASAN
                 else:
-                    # Default: assume Qemu exit is fatal bug in harness/setup
-                    log_qemu("Fatal error in __debug_recv()", self.qemu_id)
-                    sig = self.shutdown()
-                    if sig == 0: # regular shutdown? still report as KASAN
-                        return qemu_protocol.KASAN
-                    else:
-                        raise BrokenPipeError("Qemu exited with signal: %s" % str(sig))
+                    raise BrokenPipeError("Qemu exited with signal: %s" % str(sig))
 
             if res == qemu_protocol.PRINTF:
                 self.__debug_hprintf()
@@ -539,12 +480,9 @@ class qemu:
         os.system('kill -9 `pgrep qemu` 2>/dev/null')
         return self.start()
 
-    # Reset Qemu after crash/timeout - can skip if target has own forkserver
+    # Reset Qemu after crash/timeout
     def reload(self):
-        if self.config.argument_values['forkserver']:
-            return True
-        else:
-            return self.restart()
+        return self.restart()
 
     # Reload is not part of released Redqueen backend, it seems we can simply disable it here..
     def soft_reload(self):
@@ -566,12 +504,8 @@ class qemu:
     # TODO: can directly return result for handling by caller?
     # TODO: document protocol and meaning/effect of each message
     def check_recv(self, timeout_detection=True):
-        if timeout_detection and not self.config.argument_values['forkserver']:
-            ready = select.select([self.control], [], [], 3)
-            if not ready[0]:
-                return 2
-        else:
-            ready = select.select([self.control], [], [], 5.0)
+        if timeout_detection:
+            ready = select.select([self.control], [], [], self.timeout_threshold)
             if not ready[0]:
                 return 2
         result = self.__debug_recv()
@@ -599,14 +533,7 @@ class qemu:
             return 0
 
     # Wait forever on Qemu to execute the payload - useful for interactive debug
-    def debug_payload(self, apply_patches=True):
-
-        # TODO: do we care about this?
-        if apply_patches:
-            self.send_enable_patches()
-        else:
-            self.send_disable_patches()
-
+    def debug_payload(self):
         self.__debug_send(qemu_protocol.RELEASE)
 
         while True:
@@ -617,7 +544,7 @@ class qemu:
         result = self.__debug_recv()
         return result
 
-    def send_payload(self, apply_patches=True, timeout_detection=True, max_iterations=10,):
+    def send_payload(self, timeout_detection=True, max_iterations=10,):
         if (self.debug_mode):
             log_qemu("Send payload..", self.qemu_id)
 
@@ -626,8 +553,6 @@ class qemu:
 
         self.persistent_runs += 1
         start_time = time.time()
-        # TODO: added in redqueen - verify what this is doing
-        self.send_disable_patches()
         self.__debug_send(qemu_protocol.RELEASE)
         
         self.crashed = False
@@ -664,14 +589,12 @@ class qemu:
             #raise ValueError("Unhandled return code %s" % str(value))
             pass
 
-        self.needs_execution_for_patches = False
-
         ## repeat logic - enable starting with RQ release..
         if repeat:
             log_qemu("Repeating iteration...", self.qemu_id)
             if max_iterations != 0:
-                self.send_payload(apply_patches=apply_patches, timeout_detection=timeout_detection, max_iterations=0)
-                res = self.send_payload(apply_patches=apply_patches, timeout_detection=timeout_detection,
+                self.send_payload(timeout_detection=timeout_detection, max_iterations=0)
+                res = self.send_payload(timeout_detection=timeout_detection,
                                         max_iterations=max_iterations - 1)
                 res.performance = time.time() - start_time
                 return res
@@ -689,16 +612,7 @@ class qemu:
         else:
             return "regular"
 
-    def enable_sampling_mode(self):
-        self.__debug_send(qemu_protocol.ENABLE_SAMPLING)
-
-    def disable_sampling_mode(self):
-        self.__debug_send(qemu_protocol.DISABLE_SAMPLING)
-
-    def submit_sampling_run(self):
-        self.__debug_send(qemu_protocol.COMMIT_FILTER)
-
-    def turn_on_coverage_map(self, retry=0):
+    def enable_coverage_map(self, retry=0):
         try:
             self.__debug_send(qemu_protocol.COVERAGE_ON)
         except BrokenPipeError:
@@ -707,23 +621,8 @@ class qemu:
             self.reload()
             self.__debug_send(qemu_protocol.COVERAGE_ON)
     
-    def turn_off_coverage_map(self, retry=0):
+    def disable_coverage_map(self, retry=0):
         self.__debug_send(qemu_protocol.COVERAGE_OFF)
-    
-    def execute_in_trace_mode(self, timeout_detection):
-        log_qemu("Performing trace iteration...", self.qemu_id)
-        exec_res = None
-        try:
-            self.soft_reload()
-            self.send_enable_trace()
-            exec_res = self.send_payload(timeout_detection=timeout_detection)
-            self.soft_reload()
-            self.send_disable_trace()
-        except Exception as e:
-            log_qemu("Error during trace: %s" % str(e), self.qemu_id)
-            return None
-
-        return exec_res
 
     def set_payload(self, irp):
         if self.exiting:
@@ -772,6 +671,6 @@ class qemu:
     def _reload_driver(self):
         self.send_irp(IRP(0, 0, 0, command=qemu_protocol.DRIVER_RELOAD))
     
-    def set_anti_ioctl_filter(self):
+    def enable_anti_ioctl_filter(self):
         self.send_irp(IRP(0, 0, 0, command=qemu_protocol.ANTI_IOCTL_FILTER))
     

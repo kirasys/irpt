@@ -21,7 +21,7 @@ class Crasher:
         return len(self.crasher_queue) > 0
 
     def reproduce(self):
-        self.q.turn_on_coverage_map()
+        self.q.enable_coverage_map()
         for program in self.crasher_queue:
             self.q.reload_driver()
 
@@ -48,5 +48,5 @@ class Crasher:
                         program.save_to_file(exec_res.exit_reason)
                         self.statistics.event_findings(exec_res.exit_reason)
                     break
-        self.q.turn_off_coverage_map()
+        self.q.disable_coverage_map()
         self.clear()
