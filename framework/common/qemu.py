@@ -101,7 +101,6 @@ class qemu:
         if not notifiers:
             self.cmd += ",crash_notifier=False"
 
-        # fast reload is not part of redqueen release
         # if not self.config.argument_values.has_key('R') or not self.config.argument_values['R']:
         self.cmd += ",reload_mode=False"
 

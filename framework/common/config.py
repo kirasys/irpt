@@ -129,14 +129,6 @@ def add_args_fuzzer(parser):
                         action='store_true', default=False)
     parser.add_argument('-grimoire', required=False, help='enable Grimoire analysis & mutation stages',
                         action='store_true', default=False)
-    parser.add_argument('-redqueen', required=False, help='enable Redqueen trace & insertion stages',
-                        action='store_true', default=False)
-    parser.add_argument('-fix_hashes', required=False, help='enable Redqueen checksum fixer (broken)',
-                        action='store_true', default=False)
-    parser.add_argument('-hammer_jmp_tables', required=False, help='enable Redqueen jump table hammering (?)',
-                        action='store_true', default=False)
-    parser.add_argument('-redq_do_simple', required=False, help='do not ignore simple arith. matches in Redqueen',
-                        action='store_true', default=False)
     parser.add_argument('-cpu_affinity', metavar='<n>', help="limit processes to first n cores.",
                         type=int, required=False)
     parser.add_argument('-abort_time', metavar='<n>', help="exit after n hours",
@@ -335,17 +327,14 @@ class DebugConfiguration(six.with_metaclass(Singleton)):
 
     def __load_arguments(self):
 
-        debug_modes = ["benchmark", "gdb", "trace", "single", "trace-qemu", "noise", "printk", "redqueen",
-                       "redqueen-qemu", "verify"]
+        debug_modes = ["benchmark", "gdb", "trace", "single", "trace-qemu", "noise", "printk", "verify"]
 
         debug_modes_help = '<benchmark>\tperform performance benchmark\n' \
-                           '<gdb>\t\trun payload with Qemu gdbserver (must compile without redqueen!)\n' \
+                           '<gdb>\t\trun payload with Qemu gdbserver\n' \
                            '<trace>\t\tperform trace run\n' \
                            '<trace-qemu>\tperform trace run and print QEMU stdout\n' \
                            '<noise>\t\tperform run and messure nondeterminism\n' \
                            '<printk>\t\tredirect printk calls to IRPT\n' \
-                           '<redqueen>\trun redqueen debugger\n' \
-                           '<redqueen-qemu>\trun redqueen debugger and print QEMU stdout\n' \
                            '<verify>\t\trun verifcation steps\n'
 
         parser = ArgsParser(formatter_class=argparse.RawTextHelpFormatter, add_help=False)

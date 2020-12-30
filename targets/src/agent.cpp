@@ -32,8 +32,8 @@ void harness(void) {
 	return;
 }
 
-char PagedArea[0x800000];
-char OutBuffer[0x10000];
+char BigInputBuffer[0x800000];
+char OutputBuffer[0x10000];
 
 int main(int argc, char** argv){
 	UINT64 psGetCurrentProcessId;
@@ -49,11 +49,11 @@ int main(int argc, char** argv){
 
 	/* submit the guest virtual address of the payload buffer */
     hprintf("[+] Submitting buffer address to hypervisor...");
-    Hypercall(HYPERCALL_IRPT_GET_PAYLOAD, (UINT64)payload_buffer);
+    Hypercall(HYPERCALL_KAFL_GET_PAYLOAD, (UINT64)payload_buffer);
 
     /* this hypercall submits the current CR3 value */ 
     hprintf("[+] Submitting current CR3 value to hypervisor...");
-    Hypercall(HYPERCALL_IRPT_SUBMIT_CR3, 0);
+    Hypercall(HYPERCALL_KAFL_SUBMIT_CR3, 0);
 
 	// Register the driver.
 	delete_service();
@@ -62,7 +62,7 @@ int main(int argc, char** argv){
 
 	device_handle = open_driver_device();
 	if (!device_handle)
-		Hypercall(HYPERCALL_IRPT_USER_ABORT, 0);
+		Hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 
 	if (!set_ip0_filter()) {
 		hprintf("[+] Fail to set ip0 filter.");
@@ -73,27 +73,27 @@ int main(int argc, char** argv){
 		harness();
 		
 		while(1){
-			Hypercall(HYPERCALL_IRPT_NEXT_PAYLOAD, 0);
+			Hypercall(HYPERCALL_KAFL_NEXT_PAYLOAD, 0);
 
 			uint32_t cmd = payload_buffer->Command;
 			switch (cmd) {
 			case EXECUTE_IRP:
 				/* request new payload (*blocking*) */
-				Hypercall(HYPERCALL_IRPT_ACQUIRE, 0);
+				Hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
 				//hprintf("%x %x", payload_buffer->IoControlCode, payload_buffer->InBufferLength);
 
 				DeviceIoControl(device_handle,
 					payload_buffer->IoControlCode,
 					payload_buffer->InBuffer,
 					payload_buffer->InBufferLength,
-					OutBuffer,
+					OutputBuffer,
 					payload_buffer->OutBufferLength,
 					NULL,
 					NULL
 				);
 
 				/* inform fuzzer about finished fuzzing iteration */
-				Hypercall(HYPERCALL_IRPT_RELEASE, 0);
+				Hypercall(HYPERCALL_KAFL_RELEASE, 0);
 				break;
 			case DRIVER_REVERT:
 				HypercallEx(HYPERCALL_IRPT_IP_FILTER, 0, 0, 0);
@@ -101,36 +101,36 @@ int main(int argc, char** argv){
 			case DRIVER_RELOAD:
 				CloseHandle(device_handle);
 				if (!unload_driver() || !load_driver())
-					Hypercall(HYPERCALL_IRPT_USER_ABORT, 0);
+					Hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 				
 				device_handle = open_driver_device();
 				if (!device_handle)
-					Hypercall(HYPERCALL_IRPT_USER_ABORT, 0);
+					Hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 
 				if (!set_ip0_filter()) {
 					hprintf("[+] Fail to set ip0 filter.");
-					Hypercall(HYPERCALL_IRPT_USER_ABORT, 0);
+					Hypercall(HYPERCALL_KAFL_USER_ABORT, 0);
 				}
 				break;
-			case SCAN_PAGE_FAULT:
-				memset(PagedArea, 0x61, sizeof(PagedArea));
-				memcpy(PagedArea, payload_buffer->InBuffer, payload_buffer->InBufferLength);
+			case CHECK_PAGE_FAULT:
+				memset(BigInputBuffer, 0x61, sizeof(BigInputBuffer));
+				memcpy(BigInputBuffer, payload_buffer->InBuffer, payload_buffer->InBufferLength);
 				
 				/* request new payload (*blocking*) */
-				Hypercall(HYPERCALL_IRPT_ACQUIRE, 0);
+				Hypercall(HYPERCALL_KAFL_ACQUIRE, 0);
 
 				DeviceIoControl(device_handle,
 					payload_buffer->IoControlCode,
-					PagedArea,
-					sizeof(PagedArea),
-					OutBuffer,
+					BigInputBuffer,
+					sizeof(BigInputBuffer),
+					OutputBuffer,
 					payload_buffer->OutBufferLength,
 					NULL,
 					NULL
 				);
 
 				/* inform fuzzer about finished fuzzing iteration */
-				Hypercall(HYPERCALL_IRPT_RELEASE, 0);
+				Hypercall(HYPERCALL_KAFL_RELEASE, 0);
 				break;
 			case ANTI_IOCTL_FILTER:
 				psGetCurrentProcessId = resolve_KernelFunction(sPsGetCurrentProcessId);

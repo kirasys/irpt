@@ -1,6 +1,4 @@
 /*
- * This file is part of Redqueen.
- *
  * Copyright 2019 Sergej Schumilo, Cornelius Aschermann
  *
  * SPDX-License-Identifier: MIT
@@ -19,33 +17,33 @@
 
 #include <stdint.h>
 
-#define HYPERCALL_IRPT_RAX_ID				0x01f
-#define HYPERCALL_IRPT_ACQUIRE				0
-#define HYPERCALL_IRPT_GET_PAYLOAD			1
-#define HYPERCALL_IRPT_GET_PROGRAM			2
-#define HYPERCALL_IRPT_GET_ARGV				3
-#define HYPERCALL_IRPT_RELEASE				4
-#define HYPERCALL_IRPT_SUBMIT_CR3			5
-#define HYPERCALL_IRPT_SUBMIT_PANIC			6
-#define HYPERCALL_IRPT_SUBMIT_KASAN			7
-#define HYPERCALL_IRPT_PANIC				8
-#define HYPERCALL_IRPT_KASAN				9
-#define HYPERCALL_IRPT_SNAPSHOT				10
-#define HYPERCALL_IRPT_INFO					11
-#define HYPERCALL_IRPT_NEXT_PAYLOAD			12
-#define HYPERCALL_IRPT_PRINTF				13
-#define HYPERCALL_IRPT_PRINTK_ADDR			14
-#define HYPERCALL_IRPT_PRINTK				15
+#define HYPERCALL_KAFL_RAX_ID				0x01f
+#define HYPERCALL_KAFL_ACQUIRE				0
+#define HYPERCALL_KAFL_GET_PAYLOAD			1
+#define HYPERCALL_KAFL_GET_PROGRAM			2
+#define HYPERCALL_KAFL_GET_ARGV				3
+#define HYPERCALL_KAFL_RELEASE				4
+#define HYPERCALL_KAFL_SUBMIT_CR3			5
+#define HYPERCALL_KAFL_SUBMIT_PANIC			6
+#define HYPERCALL_KAFL_SUBMIT_KASAN			7
+#define HYPERCALL_KAFL_PANIC				8
+#define HYPERCALL_KAFL_KASAN				9
+#define HYPERCALL_KAFL_SNAPSHOT				10
+#define HYPERCALL_KAFL_INFO					11
+#define HYPERCALL_KAFL_NEXT_PAYLOAD			12
+#define HYPERCALL_KAFL_PRINTF				13
+#define HYPERCALL_KAFL_PRINTK_ADDR			14
+#define HYPERCALL_KAFL_PRINTK				15
 
 /* user space only hypercalls */
-#define HYPERCALL_IRPT_USER_RANGE_ADVISE	16
-#define HYPERCALL_IRPT_USER_SUBMIT_MODE		17
-#define HYPERCALL_IRPT_USER_FAST_ACQUIRE	18
+#define HYPERCALL_KAFL_USER_RANGE_ADVISE	16
+#define HYPERCALL_KAFL_USER_SUBMIT_MODE		17
+#define HYPERCALL_KAFL_USER_FAST_ACQUIRE	18
 /* 19 is already used for exit reason KVM_EXIT_KAFL_TOPA_MAIN_FULL */
-#define HYPERCALL_IRPT_USER_ABORT			20
-#define HYPERCALL_IRPT_TIMEOUT				21
+#define HYPERCALL_KAFL_USER_ABORT			20
+#define HYPERCALL_KAFL_TIMEOUT				21
 
-/* kirasys */
+/* IRPT */
 #define HYPERCALL_IRPT_LOCK					22
 #define HYPERCALL_IRPT_IP_FILTER			23
 #define HYPERCALL_IRPT_MEMWRITE				24
@@ -62,7 +60,7 @@
 #define EXECUTE_IRP			0
 #define DRIVER_REVERT 		1
 #define DRIVER_RELOAD		2
-#define SCAN_PAGE_FAULT		3
+#define CHECK_PAGE_FAULT	3
 #define ANTI_IOCTL_FILTER	4
 
 typedef struct{
@@ -76,7 +74,7 @@ typedef struct{
 #if defined(__i386__)
 static void Hypercall(uint32_t rbx, uint32_t rcx){
 	printf("%s %x %x \n", __func__, rbx, rcx);
-	uint32_t rax = HYPERCALL_IRPT_RAX_ID;
+	uint32_t rax = HYPERCALL_KAFL_RAX_ID;
     asm volatile("movl %0, %%ecx;"
 				 "movl %1, %%ebx;"  
 				 "movl %2, %%eax;"
@@ -89,7 +87,7 @@ static void Hypercall(uint32_t rbx, uint32_t rcx){
 #elif defined(__x86_64__)
 
 static void Hypercall(uint64_t rbx, uint64_t rcx){
-	uint64_t rax = HYPERCALL_IRPT_RAX_ID;
+	uint64_t rax = HYPERCALL_KAFL_RAX_ID;
     asm volatile("movq %0, %%rcx;"
 				 "movq %1, %%rbx;"  
 				 "movq %2, %%rax;"
@@ -101,7 +99,7 @@ static void Hypercall(uint64_t rbx, uint64_t rcx){
 }
 
 static void HypercallEx(uint64_t rbx, uint64_t rcx, uint64_t rdx, uint64_t rsi){
-	uint64_t rax = HYPERCALL_IRPT_RAX_ID;
+	uint64_t rax = HYPERCALL_KAFL_RAX_ID;
     asm volatile("movq %0, %%rsi;"
 				 "movq %1, %%rdx;"
 				 "movq %2, %%rcx;"
@@ -140,10 +138,10 @@ static void hprintf(const char * format, ...){
 		vsnprintf((char*)hprintf_buffer, HPRINTF_MAX_SIZE, format, args);
 # if defined(__i386__)
 		printf("%s", hprintf_buffer);
-		Hypercall(HYPERCALL_IRPT_PRINTF, (uint32_t)hprintf_buffer);
+		Hypercall(HYPERCALL_KAFL_PRINTF, (uint32_t)hprintf_buffer);
 # elif defined(__x86_64__)
 		printf("%s", hprintf_buffer);
-		Hypercall(HYPERCALL_IRPT_PRINTF, (uint64_t)hprintf_buffer);
+		Hypercall(HYPERCALL_KAFL_PRINTF, (uint64_t)hprintf_buffer);
 # endif
 	}
 	//vprintf(format, args);

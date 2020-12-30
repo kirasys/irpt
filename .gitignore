@@ -1,12 +1,15 @@
 *.tar.xz
+*.qcow2
+
+qemu-*
+linux-*
+
 .vscode
 
-in
-out
-repro_out
-snapshot_win
+in/*
+out/*
+snapshot_win/*
 targets/include/driver.h
 targets/bin/*
 drivers/*
-qemu-*
-linux-*
+
