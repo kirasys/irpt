@@ -13,19 +13,19 @@ Qemu/KVM execution.
 Prepare the IRPT workdir and copy any provided seeds to be picked up by the scheduler.
 """
 
-import multiprocessing
+import os
+import sys
 import time
 import pgrep
-import sys
 
 from common.debug import enable_logging
 from common.self_check import post_self_check
 from common.util import prepare_working_dir, print_fail, print_note, print_warning, copy_seed_files
 from wdm.process import Process
 from wdm.interface import interface_manager
+
 def qemu_sweep():
     pids = pgrep.pgrep("qemu")
-
     if (len(pids) > 0):
         print_warning("Detected potential qemu zombies, please kill -9: " + repr(pids))
 
@@ -60,11 +60,13 @@ def start(config):
         print_fail("Refuse to operate on existing work directory. Use --purge to override.")
         return 1
 
-    # Load WDM Interface information.
+    # Load an interface json file.
     interface_manager.load(config.argument_values['interface'])
 
     # Start IRPT!
+    qemu_sweep()
     proc = Process(config)
+    
     try:
         proc.loop()
     except KeyboardInterrupt:
@@ -73,6 +75,4 @@ def start(config):
         proc.database.save()
         proc.shutdown()
 
-    time.sleep(0.2)
-    qemu_sweep()
-    sys.exit(0)
+    os._exit(0)

@@ -72,8 +72,8 @@ def prepare_working_dir(config):
     if os.path.exists(work_dir) and not purge:
         return False
 
-    folders = ["/corpus/regular", "/corpus/unique", "/corpus/crash", "/corpus/unique_crash",
-               "/corpus/unreproduced", "/corpus/timeout",
+    folders = ["/corpus/regular", "/corpus/unique", 
+               "/corpus/crash", "/corpus/unique_crash", "/corpus/unreproduced", "/corpus/timeout",
                "/metadata", "/bitmaps", "/imports"]
 
     shutil.rmtree(work_dir, ignore_errors=True)
@@ -81,9 +81,6 @@ def prepare_working_dir(config):
     project_name = work_dir.split("/")[-1]
     for path in glob.glob("/dev/shm/kafl_%s_*" % project_name):
         os.remove(path)
-
-    if os.path.exists("/dev/shm/kafl_tfilter"):
-        os.remove("/dev/shm/kafl_tfilter")
 
     for folder in folders:
         os.makedirs(work_dir + folder)

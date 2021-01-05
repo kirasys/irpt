@@ -12,6 +12,7 @@ from common import rand
 from binascii import hexlify
 
 def mutate_seq_8_bit_interesting(self, index):
+    self.cur_program.set_state('seq_8bits_interesting')
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_INTERESTING_SIZE.
@@ -35,6 +36,7 @@ def mutate_seq_8_bit_interesting(self, index):
 
 
 def mutate_seq_16_bit_interesting(self, index):
+    self.cur_program.set_state('seq_16bits_interesting')
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_INTERESTING_SIZE.
@@ -70,6 +72,7 @@ def mutate_seq_16_bit_interesting(self, index):
 
 
 def mutate_seq_32_bit_interesting(self, index):
+    self.cur_program.set_state('seq_32bits_interesting')
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_INTERESTING_SIZE.

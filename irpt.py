@@ -49,29 +49,7 @@ def fuzz_cmd(args):
     if args['revert']:
         cmd += "-revert "
 
-    if args['tui']:
-        cmd += "-tui "
-        monitor_cmd = "python3 framework/irpt_mon.py out " + os.path.basename(args['driver'])
-
-        while True:
-            row, col = os.popen('stty size', 'r').read().split()
-            if int(row) < 27 or int(col) < 82:
-                print("Your terminal is too small to show monitor!")
-                time.sleep(1)
-            else:
-                break
-        
-        procs = [multiprocessing.Process(target=os.system, args=(cmd,)),
-                 multiprocessing.Process(target=os.system, args=(monitor_cmd,))]
-        for proc in procs:
-            time.sleep(1)
-            proc.start()
-        for proc in procs:
-            proc.join()
-    else:
-        os.system(cmd)
-
-
+    os.system(cmd)
 
 def add_args_general(parser):
     parser.add_argument('-driver', metavar='<file>', required=True, action=FullPath,
@@ -81,8 +59,6 @@ def add_args_general(parser):
                         type=parse_is_file, help='path to payload to reproduce.', default=None)
     parser.add_argument('-vm', required=False, help='Name of the snapshot (default: irpt)', default="irpt")
     parser.add_argument('-revert', required=False, help="enable driver revert mode.",
-                        action='store_true', default=False)
-    parser.add_argument('-tui', required=False, help="enable TUI based monitor",
                         action='store_true', default=False)
 
 def add_args_reprodunction(parser):

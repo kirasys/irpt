@@ -138,14 +138,8 @@ def main(workdir, outfile=None):
     dot.process_once()
 
 if __name__ == "__main__":
-
     IRPT_ROOT = os.path.dirname(os.path.realpath(__file__)) + "/"
-    IRPT_BANNER = IRPT_ROOT + "banner.txt"
     IRPT_CONFIG = IRPT_ROOT + "irpt.ini"
-
-    with open(IRPT_BANNER) as f:
-        for line in f:
-            print(line.replace("\n", ""))
 
     print("<< " + common.color.BOLD + common.color.OKGREEN +
             sys.argv[0] + ": IRPT Plotter " + common.color.ENDC + ">>\n")

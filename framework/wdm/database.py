@@ -28,6 +28,7 @@ class Database:
 
         self.probability_map = []
 
+        # default program generation
         program = Program()
         program.generate()
 
@@ -36,13 +37,16 @@ class Database:
 
     def dump(self):
         for i, p in enumerate(self.unique_programs):
-            p.dump("Unique program (%.2f%%)" % (self.probability_map[i]*100))
+            p.dump(self.probability_map[i]*100)
 
-    def getAll(self):
+    def get_programs(self):
         return self.programs
     
-    def count(self):
-        return len(self.getAll)
+    def get_unique_programs(self):
+        return self.unique_programs
+    
+    def get_last_program(self):
+        return self.id_to_program[sorted(self.id_to_program)[-1]]
 
     def update_probability_map(self):
         # Calculate the probabbility map.
@@ -91,17 +95,20 @@ class Database:
             program = random.choice(self.programs)
         else:
             program = np.random.choice(self.unique_programs, p=self.probability_map)
-        self.statistics.event_database_cycle(program.get_id(), len(self.programs), len(self.unique_programs))
+        
+        program.increment_exec_count()
+        self.statistics.event_database_cycle(program)
         return program
     
     def add(self, programs):
         for program in programs:
             program.set_parent_id(program.get_id())
-            program.set_id()
+            program.set_id() # get a new id
+            program.set_dirty(True)
+            program.set_exec_count(0)
 
-            ppid = program.get_parent_id()
+            ppid = program.get_parent_id() # increment a level
             program.set_level(self.id_to_program[ppid].get_level() + 1 if ppid != 1 else 0)
-            program.update_metadata()
             
             self.programs.append(program)
             self.id_to_program[program.get_id()] = program

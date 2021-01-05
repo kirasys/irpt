@@ -29,12 +29,13 @@ class Program:
                 },
                 'level':0,
                 'exec_count':0,
-                'state':{'name':'initial', 'initial': True},
+                'state':'initial',
                 'new_bytes':{},
                 'new_bits':{}, 
                 'fav_bytes':{},
                 'fav_bits':{},
-                'dirty': True
+                'dirty': True,
+                'initial': False
             }
         else:
             program_struct = copy.deepcopy(program_struct)
@@ -50,14 +51,13 @@ class Program:
         self.coverage_map = coverage_map
         self.set_id()
 
-    def dump(self, label="PROGRAM"):
-        log(label)
-        log(f"ProgramID: {self.get_id()}", label="PROGRAM")
-        log(f"Exec count: {self.get_exec_count()}", label="PROGRAM")
-        log(f"Complexity: {self.get_level()}", label="PROGRAM")
+    def dump(self, percent=0):
+        log("id=%d, percent=%.2f%%, exec_count=%d, level=%d" 
+            % (self.get_id(), percent, self.get_exec_count(), self.get_level()), label="PROGRAM")
 
         for irp in self.irps:
-            log("IoControlCode: %x InBuffer: %s" % (irp.IoControlCode, bytes(irp.InBuffer[:0x10])), label='PROGRAM')
+            log("IoControlCode=%x, InBuffer=%s" % (irp.IoControlCode, bytes(irp.InBuffer[:0x10])), label='PROGRAM')
+        log('', label='')
 
     def load(self, f):
         i = 0
@@ -111,22 +111,14 @@ class Program:
             self.irps.append(self.__generateIRP(iocode))
     
     def mutate(self, corpus_programs):
-        method = "AFLdetermin"
-
-        #if rand.oneOf(10) and self.__mutateArg():
-        #    method = "mutateArg"
-
-        if rand.oneOf(5) and self.__splice(corpus_programs):
-            method = "splice"
-        elif rand.oneOf(10) and self.__swapIRP():
-            method = "swapIRP"
-        elif rand.oneOf(10) and self.__insertIRP(corpus_programs):
-            method = "insertIRP"
-        elif rand.oneOf(20) and self.__removeIRP():
-            method = "removeIRP"
-        
-        self.set_state(method)
-        return method
+        if rand.oneOf(10):
+            self.__splice(corpus_programs)
+        elif rand.oneOf(10):
+            self.__swapIRP()
+        elif rand.oneOf(10):
+            self.__insertIRP(corpus_programs)
+        elif rand.oneOf(20):
+            self.__removeIRP()
 
     def __splice(self, corpus_programs):
         """
@@ -262,11 +254,6 @@ class Program:
             self.dirty = False
         else:
             self.dirty = True
-    
-    def update_metadata(self):
-        self.program_struct["info"]["time"] = time.time()
-        self.program_struct["map_density"] = self.map_density()
-        self.update_file(write=True)
 
     def get_parent_id(self):
         return self.program_struct["info"]["parent"]
@@ -325,16 +312,22 @@ class Program:
         self.program_struct["level"] = val
 
     def set_state(self, val):
-        self.program_struct["state"]["name"] = val
+        self.program_struct["state"] = val
+
+    def get_state(self):
+        return self.program_struct["state"]
 
     def map_density(self):
         return 100 * len(self.program_struct["new_bytes"]) / (64 * 1024)
-    
-    def get_exit_reason(self):
-        return self.program_struct["info"]["exit_reason"]
-    
-    def set_exit_reason(self, exit_reason):
-        self.program_struct["info"]["exit_reason"] = exit_reason
+
+    def is_initial(self):
+        return self.program_struct["initial"]
+
+    def set_initial(self):
+        self.program_struct["initial"] = True
+
+    def unset_initial(self):
+        self.program_struct["initial"] = False
 
     def get_dirty(self):
         return self.program_struct["dirty"]

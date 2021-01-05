@@ -10,6 +10,7 @@ from wdm.interface import interface_manager
 from fuzzer.technique.helper import MAX_RAND_VALUES_SIZE
 
 def mutate_seq_8_bit_rand8bit(self, index):
+    self.cur_program.set_state('seq_8bits_rand8bit')
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_RAND_VALUES_SIZE.
@@ -33,6 +34,7 @@ def mutate_seq_8_bit_rand8bit(self, index):
         data[i] = orig
 
 def mutate_seq_16_bit_rand16bit(self, index):
+    self.cur_program.set_state('seq_16bits_rand16bit')
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_RAND_VALUES_SIZE.
@@ -57,6 +59,7 @@ def mutate_seq_16_bit_rand16bit(self, index):
         data[i:i+2] = orig
 
 def mutate_seq_32_bit_rand32bit(self, index):
+    self.cur_program.set_state('seq_32bits_rand32bit')
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_RAND_VALUES_SIZE.
@@ -81,6 +84,7 @@ def mutate_seq_32_bit_rand32bit(self, index):
         data[i:i+4] = orig
 
 def mutate_seq_32_bit_rand16bit(self, index):
+    self.cur_program.set_state('seq_32bits_rand16bit')
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_RAND_VALUES_SIZE.
@@ -114,6 +118,7 @@ def mutate_seq_32_bit_rand16bit(self, index):
         data[i:i+4] = orig
 
 def mutate_seq_64_bit_rand8bit(self, index):
+    self.cur_program.set_state('seq_64bits_rand8bit')
     data = self.cur_program.irps[index].InBuffer
 
     # limit interesting up to MAX_RAND_VALUES_SIZE.
@@ -142,6 +147,7 @@ def mutate_seq_64_bit_rand8bit(self, index):
         data[i:i+8] = orig
 
 def mutate_buffer_length(self, index):
+    self.cur_program.set_state('mutate_buffer_length')
     irp = self.cur_program.irps[index]
     if irp.InBufferLength <= 1 or irp.OutBufferLength <= 1:
         return
@@ -164,14 +170,15 @@ def mutate_buffer_length(self, index):
     self.cur_program.irps[index] = orig
 
 def bruteforce_irps(self):
+    self.cur_program.set_state('bruteforce_irps')
     orilen = len(self.cur_program.irps)
 
-    for _ in range(5):
-        for _ in range(30):
-            self.cur_program.irps += random.choice(self.database.getAll()).irps
-            
-        for i in range(len(self.cur_program.irps)):
-            if self.execute_irp(i):
-                return True
+    for _ in range(rand.Intn(30)):
+        self.cur_program.irps += random.choice(self.database.get_unique_programs()).irps
+    
+    self.q.reload_driver()
+    for i in range(len(self.cur_program.irps)):
+        if self.execute_irp(i):
+            return True
 
-        self.cur_program.irps = self.cur_program.irps[:orilen]
+    self.cur_program.irps = self.cur_program.irps[:orilen]

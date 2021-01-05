@@ -24,6 +24,7 @@ class Optimizer:
             exec_res = self.q.send_irp(irp)
             if exec_res.is_crash():
                 self.q.reload()
+                self.statistics.event_reload()
                 return self.__execute(irps, retry + 1)
         return exec_res.apply_lut()
 
@@ -48,7 +49,6 @@ class Optimizer:
                 continue
             program.bitmap = list(old_array)
             program.coverage_map = new_res.coverage_to_array()
-            program.set_exec_count(0)
 
             # Program optimation
             # Remove irps which is not affecting coverage.
@@ -99,35 +99,6 @@ class Optimizer:
 
             if len(program.irps):
                 optimized.append(copy.deepcopy(program))
-                program.clear_fav_bits()
-                self.__update_best_input_for_bitmap_entry(program, exec_res)  
 
         self.optimizer_queue = []  # clear
         return optimized
-    
-    def __should_overwrite_old_entry(self, index, val, node):
-        entry = self.bitmap_index_to_fav_program.get(index)
-        if not entry:
-            return True, None
-        old_program, old_val = entry
-        more_bits = val > old_val
-        # better_score = (val == old_val and program.get_fav_factor() < old_program.get_fav_factor())
-        if more_bits: # or better_score:
-            return True, old_program
-        return False, None
-
-    def __update_best_input_for_bitmap_entry(self, program, bitmap):
-        changed_programs = set()
-        for (index, val) in enumerate(bitmap.cbuffer):
-            if val == 0x0:
-                continue
-            overwrite, old_program = self.__should_overwrite_old_entry(index, val, program)
-            if overwrite:
-                self.bitmap_index_to_fav_program[index] = (program, val)
-                program.add_fav_bit(index)
-                changed_programs.add(program)
-                if old_program:
-                    old_program.remove_fav_bit(index)
-                    changed_programs.add(old_program)
-                    self.statistics.event_node_remove_fav_bit(old_program)
-    

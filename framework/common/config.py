@@ -97,8 +97,6 @@ def add_args_general(parser):
                         required=True, help='path to the output/working directory.')
     parser.add_argument('--purge', required=False, help='purge the working directory at startup.',
                         action='store_true', default=False)
-    parser.add_argument('-p', required=False, metavar='<num>', type=int, default=1,
-                        help='number of parallel Qemu instances.')
     parser.add_argument('-v', help='enable verbose logging to $work_dir/debug.log.',
                         action='store_true', default=False)
     parser.add_argument('-vv', '--debug', help='enable extra debug logging + qeme trace logs in $workdir/.',
@@ -127,8 +125,6 @@ def add_args_fuzzer(parser):
                         help='skip byte range during deterministic stage (0-128KB).')
     parser.add_argument('-radamsa', required=False, help='enable Radamsa as additional havoc stage',
                         action='store_true', default=False)
-    parser.add_argument('-grimoire', required=False, help='enable Grimoire analysis & mutation stages',
-                        action='store_true', default=False)
     parser.add_argument('-cpu_affinity', metavar='<n>', help="limit processes to first n cores.",
                         type=int, required=False)
     parser.add_argument('-abort_time', metavar='<n>', help="exit after n hours",
@@ -140,8 +136,6 @@ def add_args_fuzzer(parser):
     parser.add_argument('-payload', metavar='<file>', required=False, action=FullPath,
                         type=parse_is_file, help='path to payload to reproduce.')
     parser.add_argument('-revert', required=False, help="enable driver revert mode",
-                        action='store_true', default=False)
-    parser.add_argument('-tui', required=False, help="enable TUI based monitor",
                         action='store_true', default=False)
 
 # Qemu/Slave-specific launch options

@@ -11,6 +11,7 @@ PREFIX = {
     'PROGRAM':' \033[1;32m[PROG]\033[0m     ',
     'DEBUG':'\033[1;33m[DEBUG]\033[0m ',
     'IRP':'  \033[1;34m[IRP]\033[0m   ',
+    '':''
     }
 
 ENABLE_LOG = True
@@ -22,4 +23,4 @@ def disable_log():
 def log(msg, label="DEBUG"):
     data = PREFIX[label] + msg
     if ENABLE_LOG == True:
-        print(data) 
+        print(data)

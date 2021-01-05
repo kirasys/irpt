@@ -22,7 +22,8 @@ def walking_bits_execs(data, skip_null=False, effector_map=None):
 
     return execs
 
-def mutate_seq_walking_bits(self, index):
+def mutate_seq_walking_bit(self, index):
+    self.cur_program.set_state('seq_walking_bit')
     data = self.cur_program.irps[index].InBuffer
 
     # limit walking bits up to MAX_WALKING_BITS_SIZE.
@@ -39,6 +40,7 @@ def mutate_seq_walking_bits(self, index):
 
 
 def mutate_seq_two_walking_bits(self, index):
+    self.cur_program.set_state('seq_two_walking_bits')
     data = self.cur_program.irps[index].InBuffer
 
     # limit walking bits up to MAX_WALKING_BITS_SIZE.
@@ -57,6 +59,7 @@ def mutate_seq_two_walking_bits(self, index):
 
 
 def mutate_seq_four_walking_bits(self, index):
+    self.cur_program.set_state('seq_four_walking_bits')
     data = self.cur_program.irps[index].InBuffer
     
     # limit walking bits up to MAX_WALKING_BITS_SIZE.
@@ -79,6 +82,7 @@ def mutate_seq_four_walking_bits(self, index):
 
 
 def mutate_seq_walking_byte(self, index):
+    self.cur_program.set_state('seq_walking_byte')
     data = self.cur_program.irps[index].InBuffer
     for i in range(len(data)):
         data[i] ^= 0xFF
@@ -88,6 +92,7 @@ def mutate_seq_walking_byte(self, index):
 
 
 def mutate_seq_two_walking_bytes(self, index):
+    self.cur_program.set_state('seq_two_walking_bytes')
     data = self.cur_program.irps[index].InBuffer
 
     if len(data) <= 1:
@@ -103,6 +108,7 @@ def mutate_seq_two_walking_bytes(self, index):
 
 
 def mutate_seq_four_walking_bytes(self, index):
+    self.cur_program.set_state('seq_four_walking_bytes')
     data = self.cur_program.irps[index].InBuffer
     if len(data) <= 3:
         return

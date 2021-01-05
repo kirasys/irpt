@@ -14,6 +14,7 @@ from binascii import hexlify
 MAX_ARITHMETIC_SIZE = 0x200
 
 def mutate_seq_8_bit_arithmetic(self, index):
+    self.cur_program.set_state('seq_8bits_arithmetic')
     data = self.cur_program.irps[index].InBuffer
     
     # limit arithmethic up to MAX_ARITHMETIC_SIZE.
@@ -42,6 +43,7 @@ def mutate_seq_8_bit_arithmetic(self, index):
         data[i] = orig
 
 def mutate_seq_16_bit_arithmetic(self, index):
+    self.cur_program.set_state('seq_16bits_arithmetic')
     data = self.cur_program.irps[index].InBuffer
 
     # limit arithmethic up to MAX_ARITHMETIC_SIZE.
@@ -86,6 +88,7 @@ def mutate_seq_16_bit_arithmetic(self, index):
 
 
 def mutate_seq_32_bit_arithmetic(self, index):
+    self.cur_program.set_state('seq_32bits_arithmetic')
     data = self.cur_program.irps[index].InBuffer
 
     # limit arithmethic up to MAX_ARITHMETIC_SIZE.

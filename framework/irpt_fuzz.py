@@ -18,22 +18,13 @@ from common.self_check import self_check
 from common.config import FuzzerConfiguration
 
 IRPT_ROOT = os.path.dirname(os.path.realpath(__file__)) + "/"
-IRPT_BANNER = IRPT_ROOT + "banner.txt"
 IRPT_CONFIG = IRPT_ROOT + "irpt.ini"
-
-def sigint_handler(sig, frame):
-    sys.exit(0)
 
 def main():
     if not self_check(IRPT_ROOT):
         return 1
-
-    signal.signal(signal.SIGINT, sigint_handler)
     
     config = FuzzerConfiguration(IRPT_CONFIG)
-    if config.argument_values['tui']:
-        from debug.log import disable_log
-        disable_log()
 
     import fuzzer.core
     return fuzzer.core.start(config)
