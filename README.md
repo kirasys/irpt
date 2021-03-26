@@ -53,7 +53,7 @@ Launch `irpt.py` to get a help message with the detailed list of parameters
 
 ### Setting QEMU
 Before you launch `irpt.py`, you should be take a snapshot of QEMU with `loader.exe`.
-`loader.exe` is a file to load a target driver and `agent.exe`. Compile `loader.c` file to `loader.exe`:
+It is a file to load a target driver and `agent.exe`.
 
 ```bash
 ~/irpt/targets/compile_loader.sh
