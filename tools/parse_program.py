@@ -1,7 +1,14 @@
+#!/usr/bin/env python3
+#
+# Copyright (C) 2020-2021 Namjun Jo (kirasys@theori.io)
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 import sys
 import struct
 
 u32 = lambda x : struct.unpack('<I', x)[0]
+
 def read_binary_file(filename):
     with open(filename, 'rb') as f:
         return f.read()

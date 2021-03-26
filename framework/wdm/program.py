@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+#
+# Copyright 2020-2021 Namjun Jo (kirasys@theori.io)
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 import copy
 import time
 import random

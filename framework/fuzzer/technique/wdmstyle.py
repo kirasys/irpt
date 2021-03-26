@@ -1,3 +1,7 @@
+# Copyright 2020-2021 Namjun Jo (kirasys@theori.io)
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 import common.qemu_protocol as qemu_protocol
 
 from wdm.program import MAX_BUFFER_LEN

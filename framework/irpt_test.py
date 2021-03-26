@@ -2,6 +2,7 @@
 #
 # Copyright (C) 2017-2019 Sergej Schumilo, Cornelius Aschermann, Tim Blazytko
 # Copyright (C) 2019-2020 Intel Corporation
+# Copyright (C) 2020-2021 Namjun Jo (kirasys@theori.io)
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 

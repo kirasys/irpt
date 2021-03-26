@@ -1,3 +1,9 @@
+/*
+ * Copyright 2020 Namjun Jo (kirasys@theori.io)
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 #include <windows.h>
 #include <psapi.h>
 
