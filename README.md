@@ -1,5 +1,5 @@
-# What is IRPT?
-IRPT is a fuzzer specialized in a windows driver. It measures the coverage of windows kernel using `Intel PT technology` and resolves global data problem and IOCTL dependency.
+# IRPT: The Art, Science, and Engineering of Windows driver fuzzing
+IRPT is a fuzzer specialized in a windows driver. It measures the coverage of windows kernel using Intel PT technology and resolves global data problem and IOCTL dependency.
 
 ## Components of IRPT
 **IRPT** consists of fuzzer, mutator, reproducer, optimizer, hypervisor and corpus database. Fuzzer brings a test case from `Corpus database` and sends mutated test case to `Hypervisor` via shared memory. The hypervisor measures its coverage and checks if new coverage or crash has been found. If the new coverage has been found, `Optimizer` verifies that a new coverage is measured again and sends to corpus database after minimization. If a crash is detected, `Reproducer` verifies that the crash occurs again and saves it as a file.
