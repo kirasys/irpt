@@ -1,161 +1,70 @@
-# kAFL: HW-assisted Feedback Fuzzing for x86 Kernels
+# What is IRPT?
+IRPT is a fuzzer specialized in a windows driver. It measures the coverage of windows kernel using `Intel PT technology` and resolves global data problem and IOCTL dependency.
 
-This is a fork of the kAFL kernel fuzzer. It can be used for targets that
-execute efficiently as Qemu/KVM guests, including BIOS, custom kernels and
-full-blown Linux VMs.
+## Components of IRPT
+**IRPT** consists of fuzzer, mutator, reproducer, optimizer, hypervisor and corpus database. Fuzzer brings a test case from `Corpus database` and sends mutated test case to `Hypervisor` via shared memory. The hypervisor measures its coverage and checks if new coverage or crash has been found. If the new coverage has been found, `Optimizer` verifies that a new coverage is measured again and sends to corpus database after minimization. If a crash is detected, `Reproducer` verifies that the crash occurs again and saves it as a file.
 
-## How is it different?
+## Motivation
+"kAFL: Hardware-Assisted Feedback Fuzzing for OS Kernels" noted that non-determinism due to kernel-space interrupts, kernel threads, statefulness, and similar mechanisms makes kernel fuzzing more difficult. The kernel region has a memory structure different from that of the user land, and the execution flow can be changed by various unexpected requests such as interrupts. So it is not easy to perform a fuzzing test focusing only on a specific target region.
 
-- kAFL uses Qemu/KVM and Intel PT to provide fast execution and coverage
-  feedback. This allows to run many x86 FW and OS kernels with any desired
-  toolchain and without major modifications.
+In addition, instrumentation is required to receive feedback on coverage increase or decrease by executing the fuzzing routine. In the case of open source user land applications, it is possible to easily measure coverage by using a code compilation technique such as AFL, but since the Windows kernel is closed source, it is impossible to use the instrumentation technique to modify the inside of the code.
 
-- kAFL uses a modular design, using a (homebrew) python fuzzer that can talk to
-  multiple Qemu instances via SHM and pipes. It is designed for parallel and
-  persistent mode fuzzing but also easy to adapt to special cases, such as
-  observing non-determinism and resetting on demand.
+Accordingly, IRPT borrowed the idea of using intel-PT technology in the fuzzer from kAFL to measure the increase or decrease of coverage in the kernel. In addition, we modified the KVM-PT, QEMU-PT and hypercall communication technology developed by kAFL to implement communication between the VM loaded with the target driver and the fuzzer performing the mutation.
 
-- Redqueen and Grimoire are new generic fuzzer extensions implemented on top of
-  kAFL. Redqueen uses VM introspection to extract runtime inputs to conditional
-  instructions, overcoming typical magic byte and other input checks.  Grimoire
-  attempts to identify keywords and syntax from fuzz inputs in order to generate
-  more clever large-scale mutations.
+kAFL is a nice tool in that it enables hardware-assisted kernel fuzzing that is not dependent on the OS, but it is far from the ideal fuzzer that our pursues. The reason is that kAFL targets only a single IOCTL code. This means that the ordering dependency that exists between IOCTL routines cannot be considered.
 
+Therefore, we tried to develop a fuzzer that solves the problems that kAFL cannot solve. Based on driver interface information that can be easily obtained using IREC.
 
-## Getting Started
+## Getting started
+Installation requires multiple components, some of which can depend on Internet connectivity and defaults 
+of your distribution or version. It is recommended to install step by step. 
 
-Installation requires multiple components, some of which can depend on Internet
-connectivity and defaults of your distribution / version. It is recommended to
-install step by step and manually investigate any reported errors:
-
+```bash
+git clone irpt
+cd ~/irpt
+./install.sh deps     # check platform and install dependencies
+./install.sh perms    # allow current user to control KVM (/dev/kvm)
+./install.sh qemu     # git clone qemu-pt and build Qemu
+./install.sh linux    # git clone kvm-pt and build Linux
 ```
-$ git clone $this_repo ~/kafl
+It is safe to re-execute any of these commands after failure, for example if not all dependencies could have been downloaded.
 
-$ cd ~/kafl
-$ ./install.sh deps     # check platform and install dependencies
-$ ./install.sh perms    # allow current user to control KVM (/dev/kvm)
-$ ./install.sh qemu     # download, patch and build Qemu
-$ ./install.sh linux    # download, patch and build Linux
+```bash
+./install.sh note
 ```
+The final step does not automatically install the new Linux kernel but only gives some default instructions.
+Install according to your preference/distribution defaults, or simply follow the suggested steps above.
 
-It is safe to re-execute any of these commands after failure, for example
-if not all dependencies could have been downloaded.
 
-The final step does not automatically install the new Linux kernel but only gives
-some default instructions. Install according to your preference/distribution
-defaults, or simply follow the suggested steps:
-
+```bash
+$ sudo reboot
+$ dmesg|grep VMX
+[VMX-PT] Info:   CPU is supported!
 ```
-$ ./install.sh note
+After reboot, make sure the new kernel is booted and PT support is detected by KVM.
+You must set the correct path to the Qemu binary in `kAFL-Fuzzer/irpt.ini`.
+
+
+```bash
+python irpt.py
 ```
+Launch `irpt.py` to get a help message with the detailed list of parameters
+<br><br>
 
-After reboot, make sure the new kernel is booted and PT support is detected by KVM:
+### Setting QEMU
+Before you launch `irpt.py`, you should be take a snapshot of QEMU with `loader.exe`.
+`loader.exe` is a file to load a target driver and `agent.exe`. Compile `loader.c` file to `loader.exe`:
 
+```bash
+~/irpt/targets/compile_loader.sh
 ```
-$ sudo reboot
-$ dmesg|grep VMX
- [VMX-PT] Info:   CPU is supported!
+If you prepare the binary in `targets/bin/loader.exe`, you can launch `vm.py` to take a snapshot of Qemu. 
+
+
+```bash
+python vm.py
 ```
-
-Lauch `kAFL-Fuzzer/kafl_fuzz.py` to verify all python dependencies are met. You
-should be able to get a help message with the detailed list of parameters:
-
-```
-$ python3 ~/kafl/kAFL-Fuzzer/kafl_fuzz.py -h
-```
-
-You may have to hunt down some python dependencies that did not install
-correctly (try the corresponding package provided by your distribution!),
-or set the correct path to the Qemu binary in `kAFL-Fuzzer/kafl.ini`.
+Launch `vm.py` to get a help message with the detailed list of parameters:
 
 
-## Available Sample Targets
-
-Once the above setup is working, you may try one of the available samples to get
-started. For this purpose, please consider the supplied helper scripts and
-READMEs as your hands-on "getting started" guides:
-
-```
-~/kafl/
-  - targets/uefi_ovmf_64/{README.md,compile.sh}    - fuzz UEFI/OVMF and EFI apps
-  - targets/zephyr_x86_32/{README.rst,compile.sh}  - fuzz Zephyr (ELF images)
-  - targets/{linux,windows,macOS}\*                - fuzz full VMs (snapshots)
-  - tests/user_bench/{README.md,build.sh,run.sh}   - fuzz binutils (user apps)
-```
-
-Note that these scripts and notes were confirmed to work at some point, but we
-are not in a position to provide fully tested "stable" releases. For samples
-3 and 4, you may also refer to [kAFL ReadMe](doc/README.kAFL.md) and
-[Redqueen Readme](doc/README.Redqueen.md).
-
-
-## Visibility / Debug
-
-The `kafl_fuzz.py` application is not meant to execute interactively and does not
-provide much output beyond major errors. Instead, the status and statistics are
-logged directly to the workding directory where they can be inspected with
-separate tools:
-
-```
-/path/to/workdir/
-  - corpus/       - corpus of inputs, sorted by execution result
-  - metadata/     - metadata associated with each input
-  - stats         - overall fuzzer status
-  - slave_stats_N - individual status of each slave
-  - debug.log     - detailed logging (activate with -v)
-```
-
-Most of the status/state files are stored as `msgpack`. You can use
-`kAFL-Fuzzer/tools/mcat.py` to dump their content.
-
-A more intuitive user interface can be started like this:
-
-```
-$ python3 ~/kafl/kAFL-Fuzzer/kafl_gui.py $workdir
-```
-
-Or use the plot tool to watch as the corpus grows:
-
-```
-$ python3 ~/kafl/kAFL-Fuzzer/kafl_plot.py $workdir
-$ python3 ~/kafl/kAFL-Fuzzer/kafl_plot.py $workdir ~/graph.dot
-$ xdot ~/graph.dot
-```
-
-kAFL also records some basic stats to plot progress over time:
-
-```
-$ gnuplot -c ~/kafl/tools/stats.plot $workdir/stats.csv
-```
-
-To obtain detailed coverage analysis, you can post-process a given workdir using
-`kAFL-Fuzzer/kafl_cov.py`. This also creates a CSV file to plot discovered edges
-over time. An example usage can be is provided for the UEFI target:
-
-```
-$ ./targets/uefi_ovmf_64/compile.sh cov $workdir
-```
-
-To replay a specific payload or trace its execution in GDB, take a look at
-`kAFL-Fuzzer/kafl_debug.py`.
-
-
-## Contributions
-
-kAFL, Redqueen & Grimoire were originally developed by:
-
-```
-Sergej Schumilo         <sergej@schumilo.de>
-Cornelius Aschermann    <cornelius.aschermann@rub.de>
-Robert Gawlik           <robert.gawlik@rub.de>
-Tim Blazytko            <tim.blazytko@rub.de>
-```
-
-This project merges the respective released prototypes and adds various changes
-in the hope that they are useful. Contributions are welcome.
-
-Current developer(s):
-
-```
-Steffen Schulz <steffen.schulz@intel.com>
-```
+> **Caution!** <br> Snapshot mode is not available to access internet. You can launch [vm.py](http://vm.py) with boot mode and download the binary inside the Qemu first.
